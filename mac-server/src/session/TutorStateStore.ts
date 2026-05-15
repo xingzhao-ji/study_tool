@@ -15,6 +15,8 @@ export interface DetectedQuestion {
 export interface TutorSessionTurn extends TutorTurn {
   id: string;
   detectedQuestionId: string;
+  courseHint?: string;
+  nearbyContext?: string;
   type: TutorResponse["type"];
   options?: string[];
   confidence?: number;
@@ -89,6 +91,8 @@ export class InMemoryTutorStateStore {
       regionText: detectedQuestion.regionText,
       marker: detectedQuestion.marker,
       selectedIntent: detectedQuestion.selectedIntent,
+      courseHint: detectedQuestion.courseHint,
+      nearbyContext: detectedQuestion.nearbyContext,
       answer: tutorResponse.answer,
       type: tutorResponse.type,
       options: tutorResponse.options,

@@ -254,7 +254,8 @@ button:focus-visible {
 .marker-row,
 .intent-options,
 .action-row,
-.answer-actions {
+.answer-actions,
+.turn-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -360,6 +361,15 @@ button:focus-visible {
   line-height: 1.48;
 }
 
+.turn-actions {
+  margin-top: 10px;
+}
+
+.turn-actions button {
+  min-height: 36px;
+  padding: 0 10px;
+}
+
 @media (max-width: 860px) {
   .app-shell {
     width: min(100% - 20px, 1180px);
@@ -387,7 +397,8 @@ button:focus-visible {
 
   .marker-row button,
   .intent-option,
-  .answer-actions button {
+  .answer-actions button,
+  .turn-actions button {
     flex: 1 1 auto;
   }
 

@@ -58,6 +58,7 @@ describe("session routes", () => {
     const session = await get("/session");
     assert.equal(session.body.turns.length, 1);
     assert.equal(session.body.turns[0].selectedIntent, "Explain when FOLLOW includes FIRST");
+    assert.equal(session.body.turns[0].courseHint, "CS 132 parsing");
   });
 
   it("passes previous tutor context into check? follow-up work", async () => {

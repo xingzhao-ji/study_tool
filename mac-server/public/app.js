@@ -339,9 +339,31 @@ function renderTurns(sessionTurns) {
     reply.className = "turn-answer";
     reply.textContent = turn.answer;
 
-    item.append(meta, prompt, reply);
+    const actions = document.createElement("div");
+    actions.className = "turn-actions";
+
+    const reuse = document.createElement("button");
+    reuse.type = "button";
+    reuse.textContent = "Reuse";
+    reuse.addEventListener("click", () => reuseTurn(turn));
+
+    const check = document.createElement("button");
+    check.type = "button";
+    check.textContent = "Check follow-up";
+    check.addEventListener("click", () => reuseTurn(turn, "check?"));
+
+    actions.append(reuse, check);
+    item.append(meta, prompt, reply, actions);
     turns.append(item);
   }
+}
+
+function reuseTurn(turn, nextMarker = turn.marker) {
+  regionText.value = turn.regionText ?? "";
+  marker.value = nextMarker;
+  courseHint.value = turn.courseHint ?? courseHint.value;
+  nearbyContext.value = turn.nearbyContext ?? "";
+  regionText.focus();
 }
 
 function renderError(message) {
