@@ -8,6 +8,7 @@ const clearButton = document.querySelector("#clearButton");
 const answer = document.querySelector("#answer");
 const answerControls = document.querySelector("#answerControls");
 const showFullAnswer = document.querySelector("#showFullAnswer");
+const copyAnswerButton = document.querySelector("#copyAnswerButton");
 const intentOptions = document.querySelector("#intentOptions");
 const responseType = document.querySelector("#responseType");
 const turns = document.querySelector("#turns");
@@ -389,6 +390,24 @@ async function undoLastTurn() {
   }
 }
 
+async function copyCurrentAnswer() {
+  if (!currentAnswerText || !navigator.clipboard?.writeText) {
+    renderError("Copy is unavailable in this browser.");
+    return;
+  }
+
+  copyAnswerButton.disabled = true;
+
+  try {
+    await navigator.clipboard.writeText(currentAnswerText);
+    responseType.textContent = "Copied";
+  } catch (error) {
+    renderError("Copy is unavailable in this browser.");
+  } finally {
+    copyAnswerButton.disabled = false;
+  }
+}
+
 function renderDetectionResult(body) {
   draftingFollowUpCheck = false;
   currentDetection = body.detectedQuestion;
@@ -618,6 +637,7 @@ pairButton.addEventListener("click", async () => {
 
 codexStatusButton.addEventListener("click", checkCodexStatus);
 undoLastButton.addEventListener("click", undoLastTurn);
+copyAnswerButton.addEventListener("click", copyCurrentAnswer);
 copySessionButton.addEventListener("click", copySessionNotes);
 downloadSessionButton.addEventListener("click", downloadSessionNotes);
 uploadFrameButton.addEventListener("click", () => uploadFrame(true));

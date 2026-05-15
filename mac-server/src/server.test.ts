@@ -81,6 +81,7 @@ describe("mac server", () => {
     assert.match(body, /id="framePreview"/);
     assert.match(body, /id="uploadFrameOnlyButton"/);
     assert.match(body, /id="copySessionButton"/);
+    assert.match(body, /id="copyAnswerButton"/);
     assert.match(body, /id="downloadSessionButton"/);
     assert.match(body, /id="undoLastButton"/);
     assert.match(body, /id="intentOptions"/);
@@ -102,6 +103,7 @@ describe("mac server", () => {
     assert.match(scriptBody, /Choose the kind of help/);
     assert.match(scriptBody, /checkCodexStatus/);
     assert.match(scriptBody, /copySessionNotes/);
+    assert.match(scriptBody, /copyCurrentAnswer/);
     assert.match(scriptBody, /downloadSessionNotes/);
     assert.match(scriptBody, /undoLastTurn/);
     assert.match(scriptBody, /prepareFollowUpCheck/);
