@@ -58,6 +58,20 @@ describe("CodexPrivateLocalProvider", () => {
     assert.match(runner.calls[0]?.options.input ?? "", /Return only the tutor response text/);
   });
 
+  it("adds marker-specific prompt constraints for small hints", async () => {
+    const runner = new FakeCommandRunner([{ stdout: "Look at the suffix after A." }]);
+    const provider = new CodexPrivateLocalProvider({ commandRunner: runner, timeoutMs: 500 });
+
+    await provider.ask({
+      regionText: "FOLLOW(A) includes FIRST(B)",
+      marker: "hint?",
+      courseHint: "CS 132 parsing"
+    });
+
+    assert.match(runner.calls[0]?.options.input ?? "", /give exactly one small hint/i);
+    assert.match(runner.calls[0]?.options.input ?? "", /Do not give a numbered solution/i);
+  });
+
   it("returns structured timeout errors", async () => {
     const runner = new FakeCommandRunner([{ stdout: "", timedOut: true }]);
     const provider = new CodexPrivateLocalProvider({ commandRunner: runner, timeoutMs: 25 });

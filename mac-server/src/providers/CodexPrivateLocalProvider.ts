@@ -146,10 +146,35 @@ function buildCodexPrompt(request: TutorRequest, mode: "intent" | "answer"): str
 
   return [
     baseRules,
+    markerInstruction(request),
     "Return only the tutor response text.",
     "If checking work, identify the first concrete issue before giving a correction.",
     taskPrompt
   ].join("\n\n");
+}
+
+function markerInstruction(request: TutorRequest): string {
+  switch (request.marker.trim()) {
+    case "hint?":
+      return "Marker behavior: give exactly one small hint. Do not give a numbered solution or the final answer.";
+    case "next?":
+      return "Marker behavior: give only the next concrete step the student should do.";
+    case "why?":
+      return "Marker behavior: explain why the boxed statement or step is true in a short conceptual way.";
+    case "check?":
+    case "✓?":
+      return "Marker behavior: check the work and point out the first concrete issue. Do not rewrite the full solution unless needed.";
+    case "err?":
+      return "Marker behavior: find the likely mistake and explain the correction briefly.";
+    case "full?":
+      return "Marker behavior: give the full solution only if the boxed work cannot be helped by a smaller next step.";
+    case "ex?":
+      return "Marker behavior: give one similar example, then stop.";
+    case "simplify?":
+      return "Marker behavior: explain more simply using plain language.";
+    default:
+      return "Marker behavior: keep the response concise and focused on the user's selected intent.";
+  }
 }
 
 function cleanCodexText(text: string): string {
