@@ -110,7 +110,9 @@
             <label for="frameFile">Screenshot or crop</label>
             <input id="frameFile" type="file" accept="image/*">
           </div>
+          <img id="framePreview" class="frame-preview" alt="Selected screenshot preview" hidden>
           <div class="action-row">
+            <button id="uploadFrameOnlyButton" type="button">Upload frame only</button>
             <button id="uploadFrameButton" type="button">Upload with current text</button>
           </div>
           <p class="note-text">OCR is not implemented yet. Use the boxed text and marker fields above to correct the detected question.</p>

@@ -23,7 +23,9 @@ const pairingTokenInput = document.querySelector("#pairingToken");
 const pairButton = document.querySelector("#pairButton");
 const frameFile = document.querySelector("#frameFile");
 const uploadFrameButton = document.querySelector("#uploadFrameButton");
+const uploadFrameOnlyButton = document.querySelector("#uploadFrameOnlyButton");
 const frameStatus = document.querySelector("#frameStatus");
+const framePreview = document.querySelector("#framePreview");
 const connectionService = document.querySelector("#connectionService");
 const connectionProvider = document.querySelector("#connectionProvider");
 const connectionSession = document.querySelector("#connectionSession");
@@ -175,17 +177,24 @@ async function submitAsk() {
   }
 }
 
-async function uploadFrame() {
+async function uploadFrame(includeCurrentText = true) {
   if (!frameFile.files?.[0] || (pairingRequired && !paired)) {
     return;
   }
 
   uploadFrameButton.disabled = true;
+  uploadFrameOnlyButton.disabled = true;
   frameStatus.textContent = "Uploading";
 
   try {
     const dataUrl = await readFileAsDataUrl(frameFile.files[0]);
     const request = currentRequest();
+    const manualFields = includeCurrentText
+      ? request
+      : {
+          courseHint: request.courseHint,
+          nearbyContext: request.nearbyContext
+        };
     const response = await apiFetch("/frame", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -193,7 +202,7 @@ async function uploadFrame() {
         dataUrl,
         filename: frameFile.files[0].name,
         mimeType: frameFile.files[0].type,
-        ...request
+        ...manualFields
       })
     });
     const body = await response.json();
@@ -219,6 +228,7 @@ async function uploadFrame() {
     renderError("The local tutor server did not accept the frame.");
   } finally {
     uploadFrameButton.disabled = false;
+    uploadFrameOnlyButton.disabled = false;
   }
 }
 
@@ -435,7 +445,21 @@ pairButton.addEventListener("click", async () => {
   startPolling();
 });
 
-uploadFrameButton.addEventListener("click", uploadFrame);
+uploadFrameButton.addEventListener("click", () => uploadFrame(true));
+uploadFrameOnlyButton.addEventListener("click", () => uploadFrame(false));
+frameFile.addEventListener("change", async () => {
+  if (!frameFile.files?.[0]) {
+    framePreview.hidden = true;
+    framePreview.removeAttribute("src");
+    frameStatus.textContent = "No frame";
+    return;
+  }
+
+  const dataUrl = await readFileAsDataUrl(frameFile.files[0]);
+  framePreview.src = dataUrl;
+  framePreview.hidden = false;
+  frameStatus.textContent = "Frame selected";
+});
 
 for (const button of document.querySelectorAll("[data-marker]")) {
   button.addEventListener("click", () => {

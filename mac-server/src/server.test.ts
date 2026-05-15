@@ -53,6 +53,8 @@ describe("mac server", () => {
     assert.match(body, /id="marker"/);
     assert.match(body, /id="connectionProvider"/);
     assert.match(body, /id="connectionSession"/);
+    assert.match(body, /id="framePreview"/);
+    assert.match(body, /id="uploadFrameOnlyButton"/);
     assert.match(body, /id="intentOptions"/);
     assert.match(body, /id="turns"/);
   });
