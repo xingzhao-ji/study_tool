@@ -141,6 +141,24 @@ describe("course RAG routes", () => {
     assert.equal(afterDelete.body.chunks.length, 0);
   });
 
+  it("preserves course_not_found grounding status for missing courses", async () => {
+    const response = await jsonRequest("POST", "/ask", {
+      regionText: "FOLLOW(A) includes FIRST(B)",
+      marker: "?",
+      selectedIntent: "Explain when FOLLOW includes FIRST",
+      courseHint: "CS 132 parsing",
+      nearbyContext: "FIRST and FOLLOW sets",
+      courseId: "missing-course",
+      useCourseGrounding: true
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.type, "tutor_answer");
+    assert.equal(response.body.grounded, false);
+    assert.equal(response.body.groundingStatus, "course_not_found");
+    assert.deepEqual(response.body.sources, []);
+  });
+
   async function jsonRequest(method: string, route: string, body?: unknown) {
     const response = await fetch(`${baseUrl}${route}`, {
       method,

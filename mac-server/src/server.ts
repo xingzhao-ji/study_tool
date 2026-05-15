@@ -683,6 +683,15 @@ function applyGroundingMetadata(
     return response;
   }
 
+  if (grounded.groundingStatus === "course_not_found") {
+    return {
+      ...response,
+      sources: [],
+      grounded: false,
+      groundingStatus: "course_not_found"
+    };
+  }
+
   if (response.groundingStatus && response.sources) {
     return response;
   }
