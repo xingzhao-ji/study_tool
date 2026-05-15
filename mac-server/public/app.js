@@ -506,7 +506,12 @@ function renderTurns(sessionTurns) {
 
     const meta = document.createElement("p");
     meta.className = "turn-meta";
-    meta.textContent = [turn.marker, turn.selectedIntent].filter(Boolean).join(" · ");
+    meta.textContent = [
+      formatTurnTime(turn.createdAt),
+      turn.marker,
+      turn.selectedIntent,
+      turn.provider
+    ].filter(Boolean).join(" · ");
 
     const prompt = document.createElement("p");
     prompt.className = "turn-region";
@@ -577,6 +582,23 @@ function compactForContext(value) {
   }
 
   return `${singleLine.slice(0, 177)}...`;
+}
+
+function formatTurnTime(value) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit"
+  });
 }
 
 function resetForm() {
