@@ -6,7 +6,22 @@ const nearbyContext = document.querySelector("#nearbyContext");
 const askButton = document.querySelector("#askButton");
 const resetFormButton = document.querySelector("#resetFormButton");
 const clearButton = document.querySelector("#clearButton");
+const courseSelect = document.querySelector("#courseSelect");
+const activeCourseStatus = document.querySelector("#activeCourseStatus");
+const useCourseGrounding = document.querySelector("#useCourseGrounding");
+const createCourseForm = document.querySelector("#createCourseForm");
+const newCourseName = document.querySelector("#newCourseName");
+const newCourseDescription = document.querySelector("#newCourseDescription");
+const createCourseButton = document.querySelector("#createCourseButton");
+const courseUploadInput = document.querySelector("#courseUploadInput");
+const uploadCourseFilesButton = document.querySelector("#uploadCourseFilesButton");
+const courseFiles = document.querySelector("#courseFiles");
+const retrievalQuery = document.querySelector("#retrievalQuery");
+const retrievalTopK = document.querySelector("#retrievalTopK");
+const retrievalButton = document.querySelector("#retrievalButton");
+const retrievalResults = document.querySelector("#retrievalResults");
 const answer = document.querySelector("#answer");
+const answerSources = document.querySelector("#answerSources");
 const answerControls = document.querySelector("#answerControls");
 const showFullAnswer = document.querySelector("#showFullAnswer");
 const copyAnswerButton = document.querySelector("#copyAnswerButton");
@@ -49,6 +64,8 @@ let currentAnswerText = "";
 let answerExpanded = false;
 let latestTutorTurn = null;
 let draftingFollowUpCheck = false;
+let courses = [];
+let activeCourseId = "";
 
 async function apiFetch(path, options = {}) {
   const headers = new Headers(options.headers ?? {});
@@ -110,7 +127,7 @@ async function loadPairingState() {
 }
 
 async function refreshAll() {
-  await Promise.all([loadStatus(), loadSession()]);
+  await Promise.all([loadStatus(), loadSession(), loadCourses()]);
 }
 
 async function loadStatus() {
@@ -227,13 +244,297 @@ async function loadSession() {
   }
 }
 
+async function loadCourses() {
+  if (pairingRequired && !paired) {
+    return;
+  }
+
+  try {
+    const response = await apiFetch("/courses");
+    const body = await response.json();
+
+    if (!response.ok) {
+      throw new Error(body.answer ?? "courses failed");
+    }
+
+    courses = body.courses ?? [];
+
+    if (activeCourseId && !courses.some((course) => course.id === activeCourseId)) {
+      activeCourseId = "";
+    }
+
+    if (!activeCourseId && courses.length > 0) {
+      activeCourseId = courses[0].id;
+    }
+
+    renderCourseSelect();
+    await loadActiveCourseDetails();
+  } catch (error) {
+    activeCourseStatus.textContent = "Courses unavailable";
+  }
+}
+
+async function loadActiveCourseDetails() {
+  courseFiles.replaceChildren();
+  retrievalResults.replaceChildren();
+
+  if (!activeCourseId) {
+    activeCourseStatus.textContent = "No course";
+    renderCourseFiles([]);
+    return;
+  }
+
+  try {
+    const [filesResponse, statusResponse] = await Promise.all([
+      apiFetch(`/courses/${activeCourseId}/files`),
+      apiFetch(`/courses/${activeCourseId}/index-status`)
+    ]);
+    const filesBody = await filesResponse.json();
+    const statusBody = await statusResponse.json();
+
+    if (!filesResponse.ok || !statusResponse.ok) {
+      throw new Error(filesBody.answer ?? statusBody.answer ?? "course details failed");
+    }
+
+    activeCourseStatus.textContent = `${statusBody.indexedFiles}/${statusBody.totalFiles} indexed · ${statusBody.chunkCount} chunks`;
+    renderCourseFiles(filesBody.files ?? []);
+  } catch (error) {
+    activeCourseStatus.textContent = "Course unavailable";
+  }
+}
+
+function renderCourseSelect() {
+  courseSelect.replaceChildren();
+
+  if (courses.length === 0) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No courses";
+    courseSelect.append(option);
+    courseSelect.value = "";
+    return;
+  }
+
+  for (const course of courses) {
+    const option = document.createElement("option");
+    option.value = course.id;
+    option.textContent = course.name;
+    courseSelect.append(option);
+  }
+
+  courseSelect.value = activeCourseId;
+}
+
+function renderCourseFiles(files) {
+  courseFiles.replaceChildren();
+
+  if (files.length === 0) {
+    const item = document.createElement("li");
+    item.className = "empty-item";
+    item.textContent = activeCourseId ? "No files uploaded" : "Create or select a course";
+    courseFiles.append(item);
+    return;
+  }
+
+  for (const file of files) {
+    const item = document.createElement("li");
+    item.className = `course-file status-${file.status}`;
+
+    const name = document.createElement("span");
+    name.textContent = file.originalName;
+
+    const status = document.createElement("span");
+    status.textContent = `${file.status} · ${formatBytes(file.sizeBytes)}`;
+
+    item.append(name, status);
+
+    if (file.error) {
+      const error = document.createElement("small");
+      error.textContent = file.error;
+      item.append(error);
+    }
+
+    courseFiles.append(item);
+  }
+}
+
+async function createCourse(event) {
+  event.preventDefault();
+
+  if (pairingRequired && !paired) {
+    renderError("Enter the pairing token before creating a course.");
+    return;
+  }
+
+  const name = newCourseName.value.trim();
+
+  if (!name) {
+    activeCourseStatus.textContent = "Name required";
+    return;
+  }
+
+  createCourseButton.disabled = true;
+  activeCourseStatus.textContent = "Creating";
+
+  try {
+    const response = await apiFetch("/courses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        description: newCourseDescription.value.trim() || undefined
+      })
+    });
+    const body = await response.json();
+
+    if (!response.ok) {
+      throw new Error(body.answer ?? "course create failed");
+    }
+
+    activeCourseId = body.course.id;
+    newCourseName.value = "";
+    newCourseDescription.value = "";
+    await loadCourses();
+  } catch (error) {
+    activeCourseStatus.textContent = "Create failed";
+    renderError("The local tutor server could not create the course.");
+  } finally {
+    createCourseButton.disabled = false;
+  }
+}
+
+async function uploadCourseFiles() {
+  if (pairingRequired && !paired) {
+    renderError("Enter the pairing token before uploading course files.");
+    return;
+  }
+
+  if (!activeCourseId) {
+    activeCourseStatus.textContent = "Select a course";
+    return;
+  }
+
+  const files = Array.from(courseUploadInput.files ?? []);
+
+  if (files.length === 0) {
+    activeCourseStatus.textContent = "Choose files";
+    return;
+  }
+
+  uploadCourseFilesButton.disabled = true;
+  activeCourseStatus.textContent = "Uploading";
+
+  try {
+    for (const file of files) {
+      const text = await readFileAsText(file);
+      const response = await apiFetch(`/courses/${activeCourseId}/files`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          originalName: file.name,
+          mimeType: file.type || mimeTypeForFileName(file.name),
+          text
+        })
+      });
+      const body = await response.json();
+
+      if (!response.ok) {
+        throw new Error(body.answer ?? `upload failed for ${file.name}`);
+      }
+    }
+
+    courseUploadInput.value = "";
+    await loadActiveCourseDetails();
+  } catch (error) {
+    activeCourseStatus.textContent = "Upload failed";
+    renderError(error.message || "The local tutor server could not upload course files.");
+  } finally {
+    uploadCourseFilesButton.disabled = false;
+  }
+}
+
+async function previewRetrieval() {
+  if (pairingRequired && !paired) {
+    renderError("Enter the pairing token before retrieving course material.");
+    return;
+  }
+
+  if (!activeCourseId) {
+    activeCourseStatus.textContent = "Select a course";
+    return;
+  }
+
+  const query = retrievalQuery.value.trim() || regionText.value.trim();
+
+  if (!query) {
+    retrievalResults.textContent = "Enter a query";
+    return;
+  }
+
+  retrievalButton.disabled = true;
+  retrievalResults.textContent = "Retrieving";
+
+  try {
+    const response = await apiFetch(`/courses/${activeCourseId}/retrieve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query,
+        topK: Number.parseInt(retrievalTopK.value, 10) || 5
+      })
+    });
+    const body = await response.json();
+
+    if (!response.ok) {
+      throw new Error(body.answer ?? "retrieval failed");
+    }
+
+    renderRetrievalResults(body.chunks ?? []);
+  } catch (error) {
+    retrievalResults.textContent = "";
+    renderError("The local tutor server could not retrieve course chunks.");
+  } finally {
+    retrievalButton.disabled = false;
+  }
+}
+
+function renderRetrievalResults(chunks) {
+  retrievalResults.replaceChildren();
+
+  if (chunks.length === 0) {
+    retrievalResults.textContent = "No relevant chunks";
+    return;
+  }
+
+  for (const chunk of chunks) {
+    const details = document.createElement("details");
+    const summary = document.createElement("summary");
+    const text = document.createElement("p");
+
+    summary.textContent = `${chunk.sourceLabel} · ${Number(chunk.score).toFixed(2)}`;
+    text.textContent = chunk.text;
+    details.append(summary, text);
+    retrievalResults.append(details);
+  }
+}
+
 function currentRequest() {
-  return {
+  const request = {
     regionText: regionText.value.trim(),
     marker: marker.value.trim(),
     courseHint: courseHint.value.trim(),
     nearbyContext: nearbyContext.value.trim()
   };
+
+  if (activeCourseId) {
+    request.courseId = activeCourseId;
+  }
+
+  if (activeCourseId && useCourseGrounding.checked) {
+    request.useCourseGrounding = true;
+  }
+
+  return request;
 }
 
 async function submitAsk() {
@@ -538,6 +839,7 @@ function scrollToResults(responseKind) {
 
 function renderTutorResponse(body) {
   responseType.textContent = body.type;
+  renderSources(body.sources ?? []);
 
   if (body.type === "intent_options") {
     responseType.textContent = "Choose intent";
@@ -548,6 +850,25 @@ function renderTutorResponse(body) {
   }
 
   renderAnswerText(body.answer ?? "No answer returned.");
+}
+
+function renderSources(sources) {
+  answerSources.replaceChildren();
+
+  if (!sources.length) {
+    answerSources.hidden = true;
+    return;
+  }
+
+  answerSources.hidden = false;
+
+  for (const source of sources) {
+    const item = document.createElement("li");
+    item.textContent = source.pageNumber
+      ? `${source.sourceLabel} p.${source.pageNumber}`
+      : source.sourceLabel;
+    answerSources.append(item);
+  }
 }
 
 function renderIntentOptions(options) {
@@ -585,6 +906,7 @@ function renderSession(session) {
   } else if (!currentDetection) {
     currentQuestion.textContent = "";
     currentConfidence.textContent = "No detection";
+    renderSources([]);
     renderAnswerText("");
     responseType.textContent = "Ready";
   }
@@ -631,6 +953,12 @@ function renderTurns(sessionTurns) {
     reply.className = "turn-answer";
     reply.textContent = turn.answer;
 
+    const sources = document.createElement("p");
+    sources.className = "turn-sources";
+    sources.textContent = (turn.sources ?? []).length
+      ? `Sources: ${turn.sources.map((source) => source.sourceLabel).join(", ")}`
+      : "";
+
     const actions = document.createElement("div");
     actions.className = "turn-actions";
 
@@ -645,7 +973,13 @@ function renderTurns(sessionTurns) {
     check.addEventListener("click", () => prepareFollowUpCheck(turn));
 
     actions.append(reuse, check);
-    item.append(meta, prompt, reply, actions);
+    item.append(meta, prompt, reply);
+
+    if (sources.textContent) {
+      item.append(sources);
+    }
+
+    item.append(actions);
     turns.append(item);
   }
 }
@@ -657,6 +991,13 @@ function reuseTurn(turn, nextMarker = turn.marker) {
   marker.value = nextMarker;
   courseHint.value = turn.courseHint ?? courseHint.value;
   nearbyContext.value = turn.nearbyContext ?? "";
+
+  if (turn.courseId) {
+    activeCourseId = turn.courseId;
+    courseSelect.value = turn.courseId;
+  }
+
+  useCourseGrounding.checked = turn.useCourseGrounding !== false;
   regionText.focus();
 }
 
@@ -732,6 +1073,7 @@ function resetForm() {
 
 function renderError(message) {
   responseType.textContent = "Error";
+  renderSources([]);
   renderAnswerText(message);
 }
 
@@ -774,6 +1116,14 @@ form.addEventListener("submit", (event) => {
 clearButton.addEventListener("click", clearSessionHistory);
 
 resetFormButton.addEventListener("click", resetForm);
+
+createCourseForm.addEventListener("submit", createCourse);
+uploadCourseFilesButton.addEventListener("click", uploadCourseFiles);
+retrievalButton.addEventListener("click", previewRetrieval);
+courseSelect.addEventListener("change", async () => {
+  activeCourseId = courseSelect.value;
+  await loadActiveCourseDetails();
+});
 
 showFullAnswer.addEventListener("click", () => {
   answerExpanded = !answerExpanded;
@@ -847,4 +1197,51 @@ function readFileAsDataUrl(file) {
     reader.addEventListener("error", () => reject(reader.error));
     reader.readAsDataURL(file);
   });
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result ?? "")));
+    reader.addEventListener("error", () => reject(reader.error));
+    reader.readAsText(file);
+  });
+}
+
+function formatBytes(value) {
+  if (!Number.isFinite(value)) {
+    return "0 B";
+  }
+
+  if (value < 1024) {
+    return `${value} B`;
+  }
+
+  if (value < 1024 * 1024) {
+    return `${(value / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function mimeTypeForFileName(name) {
+  const lower = name.toLowerCase();
+
+  if (lower.endsWith(".md") || lower.endsWith(".markdown")) {
+    return "text/markdown";
+  }
+
+  if (lower.endsWith(".json")) {
+    return "application/json";
+  }
+
+  if (lower.endsWith(".html") || lower.endsWith(".htm")) {
+    return "text/html";
+  }
+
+  if (lower.endsWith(".pdf")) {
+    return "application/pdf";
+  }
+
+  return "text/plain";
 }

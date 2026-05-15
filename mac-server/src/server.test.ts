@@ -80,6 +80,19 @@ describe("mac server", () => {
     assert.match(body, /id="codexStatusButton"/);
     assert.match(body, /id="framePreview"/);
     assert.match(body, /id="uploadFrameOnlyButton"/);
+    assert.match(body, /id="courseSelect"/);
+    assert.match(body, /id="newCourseName"/);
+    assert.match(body, /id="newCourseDescription"/);
+    assert.match(body, /id="createCourseButton"/);
+    assert.match(body, /id="useCourseGrounding"/);
+    assert.match(body, /id="courseUploadInput"/);
+    assert.match(body, /id="uploadCourseFilesButton"/);
+    assert.match(body, /id="courseFiles"/);
+    assert.match(body, /id="retrievalQuery"/);
+    assert.match(body, /id="retrievalTopK"/);
+    assert.match(body, /id="retrievalButton"/);
+    assert.match(body, /id="retrievalResults"/);
+    assert.match(body, /id="answerSources"/);
     assert.match(body, /id="resetFormButton"/);
     assert.match(body, /id="copySessionButton"/);
     assert.match(body, /id="copyAnswerButton"/);
@@ -126,11 +139,19 @@ describe("mac server", () => {
     assert.match(scriptBody, /prepareFollowUpCheck/);
     assert.match(scriptBody, /Enter the new boxed work to check/);
     assert.match(scriptBody, /draftingFollowUpCheck/);
+    assert.match(scriptBody, /loadCourses/);
+    assert.match(scriptBody, /createCourse/);
+    assert.match(scriptBody, /uploadCourseFiles/);
+    assert.match(scriptBody, /previewRetrieval/);
+    assert.match(scriptBody, /renderSources/);
+    assert.match(scriptBody, /FileReader/);
+    assert.match(scriptBody, /useCourseGrounding/);
     for (const endpoint of [
       "/pairing",
       "/health",
       "/providers",
       "/codex/status",
+      "/courses",
       "/session",
       "/session.md",
       "/simulate-detection",
@@ -141,8 +162,18 @@ describe("mac server", () => {
     ]) {
       assert.ok(scriptBody.includes(`"${endpoint}"`), `expected app.js to call ${endpoint}`);
     }
+    for (const endpointPattern of [
+      "/files",
+      "/index-status",
+      "/retrieve"
+    ]) {
+      assert.ok(scriptBody.includes(endpointPattern), `expected app.js to call course ${endpointPattern}`);
+    }
     assert.match(styleBody, /\.app-shell/);
     assert.match(styleBody, /\.intent-options/);
+    assert.match(styleBody, /\.course-list/);
+    assert.match(styleBody, /\.retrieval-results/);
+    assert.match(styleBody, /\.source-list/);
     assert.match(styleBody, /\.history-actions/);
   });
 

@@ -61,6 +61,69 @@
           </div>
         </section>
 
+        <section class="control-card course-card">
+          <div class="panel-heading">
+            <h2>Course Material</h2>
+            <span id="activeCourseStatus">No course</span>
+          </div>
+
+          <div class="course-row">
+            <div class="field-group">
+              <label for="courseSelect">Active course</label>
+              <select id="courseSelect"></select>
+            </div>
+            <label class="checkbox-row" for="useCourseGrounding">
+              <input id="useCourseGrounding" type="checkbox" checked>
+              <span>Use uploaded course material</span>
+            </label>
+          </div>
+
+          <form id="createCourseForm" class="course-create">
+            <div class="form-grid">
+              <div class="field-group">
+                <label for="newCourseName">New course</label>
+                <input id="newCourseName" autocomplete="off" placeholder="CS 132">
+              </div>
+              <div class="field-group">
+                <label for="newCourseDescription">Description</label>
+                <input id="newCourseDescription" autocomplete="off" placeholder="Parsing">
+              </div>
+            </div>
+            <div class="action-row">
+              <button id="createCourseButton" type="submit">Create course</button>
+            </div>
+          </form>
+
+          <div class="course-upload">
+            <div class="field-group">
+              <label for="courseUploadInput">Course files</label>
+              <input id="courseUploadInput" type="file" multiple accept=".txt,.md,.markdown,.json,.html,.htm,.pdf,text/plain,text/markdown,application/json,text/html,application/pdf">
+            </div>
+            <div class="action-row">
+              <button id="uploadCourseFilesButton" type="button">Upload files</button>
+            </div>
+          </div>
+
+          <ol id="courseFiles" class="course-list"></ol>
+
+          <div class="retrieval-preview">
+            <div class="form-grid compact-grid">
+              <div class="field-group">
+                <label for="retrievalQuery">Retrieval query</label>
+                <input id="retrievalQuery" value="FOLLOW(A) includes FIRST(B)">
+              </div>
+              <div class="field-group">
+                <label for="retrievalTopK">Top K</label>
+                <input id="retrievalTopK" type="number" min="1" max="20" value="5">
+              </div>
+            </div>
+            <div class="action-row">
+              <button id="retrievalButton" type="button">Preview retrieval</button>
+            </div>
+            <div id="retrievalResults" class="retrieval-results" aria-live="polite"></div>
+          </div>
+        </section>
+
         <section class="control-card">
           <div class="panel-heading">
             <h2>Simulate Detection</h2>
@@ -141,6 +204,7 @@
             <span id="responseType">Ready</span>
           </div>
           <article id="answer" class="answer-box" aria-live="polite"></article>
+          <ol id="answerSources" class="source-list" hidden></ol>
           <div id="answerControls" class="answer-controls" hidden>
             <button id="showFullAnswer" type="button">Show full</button>
           </div>

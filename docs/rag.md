@@ -1,11 +1,11 @@
 # Local Course Material RAG
 
-Goodnotes Companion Tutor now has an API-first local retrieval path for course material. It is intentionally local and conservative: uploaded files stay under ignored `data/` directories, extracted text is chunked locally, and tutor requests receive only the top retrieved chunks.
+Goodnotes Companion Tutor now has a local retrieval path for course material. It is intentionally local and conservative: uploaded files stay under ignored `data/` directories, extracted text is chunked locally, and tutor requests receive only the top retrieved chunks.
 
 ## Flow
 
-1. Create a course with `POST /courses`.
-2. Upload text-like material with `POST /courses/:courseId/files`.
+1. Create a course in the web UI or with `POST /courses`.
+2. Upload text-like material in the web UI or with `POST /courses/:courseId/files`.
 3. The server stores the original file under `data/course-files/`.
 4. Supported text is extracted locally and written under `data/extracted-text/`.
 5. Chunks and metadata are stored under `data/course-index/`.
@@ -68,6 +68,7 @@ Designed for large local files, but first implementation has only been tested on
 Current limitations:
 
 - Upload bodies are buffered by Express JSON parsing.
+- The web UI reads selected files into browser memory before uploading.
 - Index state is stored as JSON metadata, not sqlite.
 - Retrieval is lexical/BM25-like, not embedding-based.
 - Indexing is synchronous for the current request.

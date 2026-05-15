@@ -12,7 +12,7 @@ This repository currently implements the core Mac/web pieces from Milestones 0 t
 - A local simulation script that exercises ambiguous intent selection and tutor answering.
 - A provider-selection boundary for `mock` and `codex_private_local`.
 - `GET /providers` for provider status and capability discovery.
-- A local browser companion UI for entering boxed text, selecting markers, choosing intent options, reusing prior turns, checking follow-up work, exporting Markdown notes, and viewing tutor history.
+- A local browser companion UI for entering boxed text, selecting markers, choosing intent options, creating/selecting courses, uploading course files, previewing retrieval, reusing prior turns, checking follow-up work, exporting Markdown notes, and viewing tutor history.
 - A connection/status card for iPhone Safari and desktop browser use.
 - A local course-material API for creating courses, uploading text-like files, chunking extracted text, lexical retrieval, and source-aware grounded tutor answers.
 - A safe manual screenshot/crop upload path that requires manually corrected text until OCR exists.
@@ -28,7 +28,7 @@ This repository currently implements the core Mac/web pieces from Milestones 0 t
 - Selected intent returns a tutor answer.
 - `check?` and `✓?` use the same check behavior.
 - In-memory latest detection, latest answer, and turn history.
-- Local course creation, text-like course file upload, local extraction, chunking, lexical retrieval, index status, and grounded `/ask` responses with source labels.
+- Local course creation, text-like course file upload, local extraction, chunking, lexical retrieval, index status, UI retrieval preview, and grounded tutor responses with source labels.
 - Manual screenshot/crop upload endpoint that requires manual text until OCR exists.
 - LAN/iPhone Safari mode with pairing-token protection.
 - Opt-in `codex_private_local` provider with fake-runner tests, timeout handling, and max concurrency 1.
@@ -38,7 +38,6 @@ This repository currently implements the core Mac/web pieces from Milestones 0 t
 - No live Goodnotes integration.
 - No screen capture, ReplayKit stream, PiP companion, native iOS app, OCR, handwriting recognition, or boxed-region detection.
 - No durable session persistence. Restarting the server clears session state.
-- No course upload controls in the web UI yet; course/RAG is currently API-first.
 - No local PDF text extraction package yet. PDF uploads are marked `needs_ocr` until OCR or a local PDF extractor is added.
 - Manual frame upload does not detect text by itself.
 - Real Codex CLI behavior depends on a working local `codex` install and login; tests never call real Codex.
@@ -120,12 +119,12 @@ If `PAIRING_TOKEN` is missing in LAN mode, the server generates an in-memory tok
 7. `npm run simulate`
 8. `npm run dev`
 9. Open `http://localhost:3000`
-10. Create a course with `POST /courses`.
-11. Upload a small `.txt` or `.md` course material file with `POST /courses/<id>/files`.
-12. Retrieve a query from the course material with `POST /courses/<id>/retrieve`.
+10. Create a course in the Course Material panel.
+11. Upload a small `.txt` or `.md` course material file.
+12. Preview retrieval for a query from the course material.
 13. Submit a simulated region with marker `?`.
 14. Select an intent option.
-15. Enable course grounding in the request payload with `courseId` and `useCourseGrounding: true`.
+15. Keep `Use uploaded course material` enabled.
 16. Submit follow-up work with marker `check?`.
 17. For iPhone Safari, restart with `HOST=0.0.0.0 PORT=3000 npm run dev`.
 18. Run `ipconfig getifaddr en0`.
@@ -226,7 +225,7 @@ The browser UI is served by the Mac server and currently uses these local endpoi
 - `POST /undo-last`
 - `POST /frame`
 
-Course material endpoints are implemented API-first and are not wired into the UI yet:
+The UI also uses these course material endpoints:
 
 - `GET /courses`
 - `POST /courses`
@@ -408,15 +407,15 @@ When the marker is exactly `?` and no `selectedIntent` is provided, the mock tut
 
 - The tutor can be useful for MVP testing, but the mock provider is rule-based and intentionally limited.
 - Local retrieval is lexical/BM25-like, not embeddings. It works for exact course terms and small fixtures but is not a semantic search engine yet.
-- Course upload is API-first and currently buffered as JSON; the web UI upload panel and true streaming upload are still pending.
+- Course upload currently reads selected files in the browser and sends buffered JSON to the local server; true streaming upload is still pending.
 - Session state is single-process memory, not a database.
 - Pairing protects LAN API routes, but this is still a personal-use local/LAN tool, not a hardened multi-user service.
 - Saved frames are opt-in with `SAVE_FRAMES=true` and should not be committed.
 
 ## Next Steps
 
-1. Add course selector, upload, index status, retrieval preview, and source display to the web/iPhone UI.
-2. Add local PDF text extraction when a reliable package is available.
+1. Add local PDF text extraction when a reliable package is available.
+2. Replace buffered course upload with a streaming upload route.
 3. Keep hardening the web/iPhone Safari companion loop.
 4. Improve follow-up checking quality for more courses and mistake types.
 5. Exercise the opt-in Codex provider on a real local setup without making it default.
