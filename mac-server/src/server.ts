@@ -62,7 +62,7 @@ const frameSchema = z
   });
 
 const selectIntentSchema = z.object({
-  questionId: z.string().optional(),
+  questionId: z.string().trim().optional(),
   selectedIntent: z.string().trim().min(1)
 });
 
@@ -252,7 +252,7 @@ export function createApp(
       return;
     }
 
-    const questionId = parsed.data.questionId ?? stateStore.latestDetection()?.id;
+    const questionId = parsed.data.questionId || stateStore.latestDetection()?.id;
 
     if (!questionId) {
       response.status(404).json({

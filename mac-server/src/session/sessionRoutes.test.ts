@@ -61,6 +61,25 @@ describe("session routes", () => {
     assert.equal(session.body.turns[0].courseHint, "CS 132 parsing");
   });
 
+  it("treats a blank intent question id as omitted", async () => {
+    await post("/simulate-detection", {
+      regionText: "u = x^2 + 1",
+      marker: "?",
+      courseHint: "Calculus"
+    });
+
+    const response = await post("/select-intent", {
+      questionId: "   ",
+      selectedIntent: "Explain the rule being used"
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.tutorResponse.type, "tutor_answer");
+    assert.equal(response.body.detectedQuestion.selectedIntent, "Explain the rule being used");
+
+    await post("/undo-last", {});
+  });
+
   it("passes previous tutor context into check? follow-up work", async () => {
     const response = await post("/simulate-detection", {
       regionText: "FOLLOW(A) = {$}",
