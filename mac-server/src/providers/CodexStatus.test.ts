@@ -46,6 +46,19 @@ describe("checkCodexStatus", () => {
     assert.equal(status.loginStatus, "needs_attention");
     assert.match(status.detail, /Not logged in/);
   });
+
+  it("redacts token-shaped text from status output", async () => {
+    const runner = new FakeCommandRunner([
+      { stdout: "/usr/local/bin/codex\n", exitCode: 0 },
+      { stdout: "Logged in using an API key - sk-fake-***EXAMPLE\n", exitCode: 0 }
+    ]);
+
+    const status = await checkCodexStatus({ commandRunner: runner, timeoutMs: 500 });
+
+    assert.equal(status.loginStatus, "ok");
+    assert.doesNotMatch(status.checks[1]?.output ?? "", /sk-/i);
+    assert.match(status.checks[1]?.output ?? "", /\[redacted-api-key\]/);
+  });
 });
 
 interface FakeResponse {

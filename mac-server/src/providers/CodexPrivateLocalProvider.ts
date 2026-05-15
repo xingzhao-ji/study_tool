@@ -215,14 +215,29 @@ function parseIntentOptions(text: string): string[] {
     return jsonOptions;
   }
 
-  return text
+  const lines = text
     .split(/\r?\n/)
     .map((line) => line.trim())
+    .filter(Boolean);
+  const markedOptionLines = lines.filter((line) => /^[-*]\s+/.test(line) || /^\d+[.)]\s+/.test(line));
+  const candidateLines = markedOptionLines.length >= 3 ? markedOptionLines : lines;
+  const options: string[] = [];
+
+  for (const option of candidateLines
     .map((line) => line.replace(/^[-*]\s+/, ""))
     .map((line) => line.replace(/^\d+[.)]\s+/, ""))
     .map((line) => line.replace(/^["']|["']$/g, ""))
-    .filter(Boolean)
-    .slice(0, 5);
+    .filter(Boolean)) {
+    if (!options.includes(option)) {
+      options.push(option);
+    }
+
+    if (options.length >= 5) {
+      break;
+    }
+  }
+
+  return options;
 }
 
 function parseJsonIntentOptions(text: string): string[] {

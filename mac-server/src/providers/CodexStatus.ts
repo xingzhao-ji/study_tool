@@ -96,9 +96,14 @@ function cleanStatusOutput(value: string): string {
   return value
     .split(/\r?\n/)
     .map((line) => line.trim())
+    .map(redactSensitiveStatusText)
     .filter(Boolean)
     .slice(0, 6)
     .join("\n");
+}
+
+function redactSensitiveStatusText(value: string): string {
+  return value.replace(/\bsk-[A-Za-z0-9_*.-]+/g, "[redacted-api-key]");
 }
 
 function firstLine(value: string): string | undefined {
