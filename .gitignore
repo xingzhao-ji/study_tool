@@ -1,0 +1,33 @@
+# Environment and auth
+.env
+.env.*
+auth.json
+*.auth.json
+.codex/
+.openclaw/
+
+# Dependencies and build output
+node_modules/
+dist/
+build/
+coverage/
+.tmp/
+
+# Private study data and captures
+data/frames/
+data/logs/
+data/sessions/
+data/local-study-data/
+screenshots/
+captured-frames/
+captured_frames/
+ocr-logs/
+ocr_logs/
+*.ocr.log
+*.frame.json
+*.session.json
+
+# OS/editor noise
+.DS_Store
+*.swp
+*.tmp
