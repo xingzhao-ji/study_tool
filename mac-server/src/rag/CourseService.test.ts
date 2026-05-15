@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
@@ -112,6 +112,36 @@ describe("LocalCourseService", () => {
     assert.equal(files.length, 0);
     assert.equal(afterDelete.length, 0);
     assert.equal(status.chunkCount, 0);
+  });
+
+  it("reindexes existing stored files after their local text changes", async () => {
+    const course = await service.createCourse({ name: "Parsing" });
+    const file = await service.addTextFile(course.id, {
+      originalName: "follow.txt",
+      mimeType: "text/plain",
+      text: "FOLLOW(A) receives FIRST(beta) except epsilon."
+    });
+
+    await writeFile(
+      file.storedPath,
+      "A nullable suffix lets FOLLOW of the production left-hand side flow into FOLLOW(A)."
+    );
+
+    const status = await service.reindexCourse(course.id);
+    const oldResults = await service.retrieve(course.id, {
+      query: "FIRST beta epsilon",
+      topK: 5
+    });
+    const newResults = await service.retrieve(course.id, {
+      query: "nullable suffix left-hand side",
+      topK: 5
+    });
+
+    assert.equal(status.indexedFiles, 1);
+    assert.equal(status.chunkCount, 1);
+    assert.equal(oldResults.length, 0);
+    assert.equal(newResults.length, 1);
+    assert.match(newResults[0].text, /nullable suffix/);
   });
 
   it("marks pdf files as needs_ocr until local pdf text extraction is available", async () => {

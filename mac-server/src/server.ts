@@ -342,6 +342,14 @@ export function createApp(
     response.json(await courseService.indexStatus(request.params.courseId));
   });
 
+  app.post("/courses/:courseId/reindex", async (request: Request, response: Response) => {
+    try {
+      response.json(await courseService.reindexCourse(request.params.courseId));
+    } catch (error) {
+      handleCourseError(error, response, provider.name);
+    }
+  });
+
   app.post("/courses/:courseId/retrieve", async (request: Request, response: Response) => {
     const parsed = retrieveSchema.safeParse(request.body);
 

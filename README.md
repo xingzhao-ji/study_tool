@@ -235,6 +235,7 @@ The UI also uses these course material endpoints:
 - `GET /courses/:courseId/files`
 - `DELETE /courses/:courseId/files/:fileId`
 - `GET /courses/:courseId/index-status`
+- `POST /courses/:courseId/reindex`
 - `POST /courses/:courseId/retrieve`
 
 Tutor turns are stored only in the Mac server's in-memory session. The browser can copy or download the current in-memory session as Markdown notes on request. It does not use browser storage, save screenshots by default, capture frames, run OCR, or read Goodnotes.

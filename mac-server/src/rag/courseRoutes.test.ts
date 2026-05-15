@@ -70,6 +70,11 @@ describe("course RAG routes", () => {
     assert.equal(status.body.indexedFiles, 1);
     assert.equal(status.body.chunkCount > 0, true);
 
+    const reindexed = await jsonRequest("POST", `/courses/${courseId}/reindex`);
+    assert.equal(reindexed.status, 200);
+    assert.equal(reindexed.body.indexedFiles, 1);
+    assert.equal(reindexed.body.chunkCount > 0, true);
+
     const retrieved = await jsonRequest("POST", `/courses/${courseId}/retrieve`, {
       query: "FOLLOW(A) includes FIRST(B)",
       topK: 5

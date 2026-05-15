@@ -55,6 +55,8 @@ curl -X POST http://localhost:3000/courses/<courseId>/files \
 
 curl http://localhost:3000/courses/<courseId>/index-status
 
+curl -X POST http://localhost:3000/courses/<courseId>/reindex
+
 curl -X POST http://localhost:3000/courses/<courseId>/retrieve \
   -H "Content-Type: application/json" \
   -d '{"query":"FOLLOW(A) includes FIRST(B)","topK":5}'

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import type { Course, CourseChunk, CourseFile, CourseIndexStatus, RetrievedChunk } from "./types.js";
 
 export interface CreateCourseInput {
@@ -27,6 +27,7 @@ export interface CourseService {
   listFiles(courseId: string): Promise<CourseFile[]>;
   addTextFile(courseId: string, input: AddTextFileInput): Promise<CourseFile>;
   deleteFile(courseId: string, fileId: string): Promise<boolean>;
+  reindexCourse(courseId: string): Promise<CourseIndexStatus>;
   indexStatus(courseId: string): Promise<CourseIndexStatus>;
   retrieve(courseId: string, input: RetrieveInput): Promise<RetrievedChunk[]>;
 }
@@ -206,6 +207,67 @@ export class LocalCourseService implements CourseService {
     await rm(path.join(this.extractedTextDir, courseId, `${fileId}.jsonl`), { force: true });
     await this.saveState();
     return true;
+  }
+
+  async reindexCourse(courseId: string): Promise<CourseIndexStatus> {
+    const state = await this.loadState();
+    const course = state.courses.find((candidate) => candidate.id === courseId);
+
+    if (!course) {
+      throw new CourseNotFoundError(courseId);
+    }
+
+    const files = state.files.filter((file) => file.courseId === courseId);
+    state.chunks = state.chunks.filter((chunk) => chunk.courseId !== courseId);
+
+    for (const file of files) {
+      const startedAt = new Date().toISOString();
+      this.updateFile(state, file.id, {
+        status: "extracting",
+        error: undefined,
+        updatedAt: startedAt
+      });
+
+      try {
+        const text = await readFile(file.storedPath, "utf8");
+        const fileStat = await stat(file.storedPath);
+        const refreshedFile = this.updateFile(state, file.id, {
+          sizeBytes: fileStat.size,
+          updatedAt: new Date().toISOString()
+        });
+        const blocks = await extractTextBlocks(refreshedFile, text);
+
+        if (blocks.length === 0) {
+          const status = isPdf(refreshedFile) ? "needs_ocr" : "failed";
+          const error = isPdf(refreshedFile)
+            ? "PDF text extraction is not available in this dependency-free build; OCR or a local PDF text extractor is needed."
+            : "No extractable text was found in this file.";
+          this.updateFile(state, file.id, {
+            status,
+            error,
+            updatedAt: new Date().toISOString()
+          });
+        } else {
+          state.chunks.push(...chunkExtractedBlocks({ courseId, file: refreshedFile, blocks }));
+          await this.writeExtractedBlocks(courseId, file.id, blocks);
+          this.updateFile(state, file.id, {
+            status: "indexed",
+            error: undefined,
+            updatedAt: new Date().toISOString()
+          });
+        }
+      } catch (error) {
+        this.updateFile(state, file.id, {
+          status: "failed",
+          error: error instanceof Error ? error.message : String(error),
+          updatedAt: new Date().toISOString()
+        });
+      }
+    }
+
+    course.updatedAt = new Date().toISOString();
+    await this.saveState();
+    return this.indexStatus(courseId);
   }
 
   async indexStatus(courseId: string): Promise<CourseIndexStatus> {

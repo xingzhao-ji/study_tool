@@ -39,6 +39,7 @@ Current endpoints:
 - `GET /courses/:courseId/files`
 - `DELETE /courses/:courseId/files/:fileId`
 - `GET /courses/:courseId/index-status`
+- `POST /courses/:courseId/reindex`
 - `POST /courses/:courseId/retrieve`
 
 The service stores uploaded originals under ignored `data/course-files/`, extracted text under `data/extracted-text/`, and course/file/chunk metadata under `data/course-index/`. Retrieval is local lexical scoring over chunks scoped by `courseId`.

@@ -17,6 +17,8 @@ The server never sends an entire textbook or uploaded course file to a tutor pro
 
 Delete an uploaded file with `DELETE /courses/:courseId/files/:fileId`. This removes the stored original, extracted text record, and indexed chunks for that file.
 
+Rebuild a course index with `POST /courses/:courseId/reindex`. This rereads locally stored files and replaces the course's chunks. It is useful after extraction code changes or manual fixture edits.
+
 ## Grounding Policy
 
 Course-grounded answers follow this priority:
