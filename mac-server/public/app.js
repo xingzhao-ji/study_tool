@@ -282,7 +282,15 @@ async function submitAsk() {
 }
 
 async function uploadFrame(includeCurrentText = true) {
-  if (!frameFile.files?.[0] || (pairingRequired && !paired)) {
+  if (!frameFile.files?.[0]) {
+    frameStatus.textContent = "No frame";
+    renderError("Choose a screenshot or crop before uploading.");
+    return;
+  }
+
+  if (pairingRequired && !paired) {
+    frameStatus.textContent = "Pairing required";
+    renderError("Enter the pairing token before uploading a frame.");
     return;
   }
 
