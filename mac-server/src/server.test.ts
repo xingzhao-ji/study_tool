@@ -73,6 +73,7 @@ describe("mac server", () => {
     assert.match(scriptBody, /selectedIntent/);
     assert.match(scriptBody, /renderAnswerText/);
     assert.match(scriptBody, /showFullAnswer/);
+    assert.match(scriptBody, /Choose the kind of help/);
     assert.match(scriptBody, /copySessionNotes/);
     assert.match(scriptBody, /downloadSessionNotes/);
     assert.match(styleBody, /\.app-shell/);

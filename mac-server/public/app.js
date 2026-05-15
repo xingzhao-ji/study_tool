@@ -338,7 +338,9 @@ function renderTutorResponse(body) {
   responseType.textContent = body.type;
 
   if (body.type === "intent_options") {
-    renderAnswerText("");
+    responseType.textContent = "Choose intent";
+    answerExpanded = false;
+    renderAnswerText("Choose the kind of help you want for this boxed work. The tutor will answer after you pick one option.");
     renderIntentOptions(body.options ?? []);
     return;
   }

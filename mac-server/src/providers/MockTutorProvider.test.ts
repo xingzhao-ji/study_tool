@@ -5,6 +5,53 @@ import { MockTutorProvider } from "./MockTutorProvider.js";
 describe("MockTutorProvider", () => {
   const provider = new MockTutorProvider();
 
+  it("keeps FOLLOW/FIRST intent options for parsing requests", async () => {
+    const response = await provider.ask({
+      regionText: "FOLLOW(A) includes FIRST(B)",
+      marker: "?",
+      courseHint: "CS 132 parsing"
+    });
+
+    assert.equal(response.type, "intent_options");
+    assert.deepEqual(response.options, [
+      "Explain when FOLLOW includes FIRST",
+      "Check whether my rule is correct",
+      "Show a concrete example",
+      "Give the next step only",
+      "Find the likely misconception"
+    ]);
+  });
+
+  it("uses math intent options outside parsing examples", async () => {
+    const response = await provider.ask({
+      regionText: "u = x^2 + 1",
+      marker: "?",
+      courseHint: "Calculus"
+    });
+
+    assert.equal(response.type, "intent_options");
+    assert.deepEqual(response.options, [
+      "Explain the rule being used",
+      "Check my algebra or setup",
+      "Give one small hint",
+      "Show a similar example",
+      "Give the next step only"
+    ]);
+  });
+
+  it("does not answer generic selected intents with parsing-specific text", async () => {
+    const response = await provider.ask({
+      regionText: "u = x^2 + 1",
+      marker: "?",
+      selectedIntent: "Explain the rule being used",
+      courseHint: "Calculus"
+    });
+
+    assert.equal(response.type, "tutor_answer");
+    assert.doesNotMatch(response.answer ?? "", /FOLLOW|FIRST/);
+    assert.match(response.answer ?? "", /rule|definition/i);
+  });
+
   it("treats check? and ✓? as check requests", async () => {
     const checkResponse = await provider.ask({
       regionText: "FOLLOW(A) includes FIRST(B)",

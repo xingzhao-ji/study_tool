@@ -1,11 +1,27 @@
 import type { TutorProvider, TutorRequest, TutorResponse } from "./TutorProvider.js";
 
-const DEFAULT_INTENT_OPTIONS = [
+const PARSING_INTENT_OPTIONS = [
   "Explain when FOLLOW includes FIRST",
   "Check whether my rule is correct",
   "Show a concrete example",
   "Give the next step only",
   "Find the likely misconception"
+];
+
+const GENERAL_INTENT_OPTIONS = [
+  "Explain the boxed step",
+  "Check whether my work is correct",
+  "Give one small hint",
+  "Give the next step only",
+  "Find the likely misconception"
+];
+
+const MATH_INTENT_OPTIONS = [
+  "Explain the rule being used",
+  "Check my algebra or setup",
+  "Give one small hint",
+  "Show a similar example",
+  "Give the next step only"
 ];
 
 export class MockTutorProvider implements TutorProvider {
@@ -17,7 +33,7 @@ export class MockTutorProvider implements TutorProvider {
     if (marker === "?" && !request.selectedIntent) {
       return {
         type: "intent_options",
-        options: DEFAULT_INTENT_OPTIONS,
+        options: this.intentOptionsFor(request),
         provider: this.name
       };
     }
@@ -37,16 +53,24 @@ export class MockTutorProvider implements TutorProvider {
 
     switch (marker) {
       case "hint?":
-        return "Hint: focus on the symbols that can appear immediately after the boxed nonterminal. Add FIRST of that following sequence, excluding ε.";
+        return this.isParsingRequest(request)
+          ? "Hint: focus on the symbols that can appear immediately after the boxed nonterminal. Add FIRST of that following sequence, excluding ε."
+          : "Hint: name the exact rule or definition that justifies the boxed step, then apply only that rule.";
       case "next?":
-        return "Next step: identify the production where this nonterminal is followed by another symbol, then compute FIRST of the remaining suffix.";
+        return this.isParsingRequest(request)
+          ? "Next step: identify the production where this nonterminal is followed by another symbol, then compute FIRST of the remaining suffix."
+          : "Next step: rewrite the boxed line with one explicit rule applied. Do not combine multiple changes yet.";
       case "why?":
-        return "This works because FOLLOW tracks terminals that can appear immediately to the right of a nonterminal in some sentential form.";
+        return this.isParsingRequest(request)
+          ? "This works because FOLLOW tracks terminals that can appear immediately to the right of a nonterminal in some sentential form."
+          : "This step is valid only if it follows from the rule or definition you are applying. Check the condition first, then the algebra or substitution.";
       case "check?":
       case "✓?":
         return this.checkAnswer(request);
       case "err?":
-        return "Likely mistake: treating FIRST(B) as always flowing into FOLLOW(A). That only happens when B is immediately after A, or begins the suffix after A, in a production.";
+        return this.isParsingRequest(request)
+          ? "Likely mistake: treating FIRST(B) as always flowing into FOLLOW(A). That only happens when B is immediately after A, or begins the suffix after A, in a production."
+          : "Likely mistake: one condition for the rule is being skipped. Check the assumption before checking arithmetic.";
       case "full?":
         return "Full rule: for a production X -> α A β, add FIRST(β) minus ε to FOLLOW(A). If β can derive ε, also add FOLLOW(X) to FOLLOW(A).";
       case "ex?":
@@ -62,6 +86,10 @@ export class MockTutorProvider implements TutorProvider {
 
   private answerForIntent(request: TutorRequest): string {
     const intent = request.selectedIntent?.toLowerCase() ?? "";
+
+    if (!this.isParsingRequest(request)) {
+      return this.generalAnswerForIntent(intent);
+    }
 
     if (intent.includes("check")) {
       return "The rule is close, but be precise: FOLLOW(A) receives FIRST(B) minus ε only when B starts the suffix immediately after A in a production.";
@@ -80,6 +108,30 @@ export class MockTutorProvider implements TutorProvider {
     }
 
     return "FOLLOW(A) can receive FIRST(B) when A is immediately followed by B or by a sequence starting with B in some production. Add terminals from FIRST(B), but do not add ε. If the symbols after A can all vanish, then FOLLOW of the left-hand side can also flow into FOLLOW(A).";
+  }
+
+  private generalAnswerForIntent(intent: string): string {
+    if (intent.includes("check")) {
+      return "First issue to check: identify the rule used in the boxed step and verify its condition. If the condition holds, then check the algebra one line at a time.";
+    }
+
+    if (intent.includes("example")) {
+      return "Use a smaller parallel example with simple numbers or symbols first. Match each part of that example to the boxed step, then return to your problem.";
+    }
+
+    if (intent.includes("hint")) {
+      return "Hint: circle the exact expression that changed from the previous line. That usually reveals which rule you need.";
+    }
+
+    if (intent.includes("next")) {
+      return "Next step: write the rule name beside the boxed line, then perform only the next transformation that rule allows.";
+    }
+
+    if (intent.includes("misconception") || intent.includes("mistake")) {
+      return "The likely misconception is applying a familiar rule before checking whether its required condition is true.";
+    }
+
+    return "The boxed step needs one explicit justification. State the rule or definition first, check its condition, then make the smallest next move.";
   }
 
   private checkAnswer(request: TutorRequest): string {
@@ -112,5 +164,35 @@ export class MockTutorProvider implements TutorProvider {
     }
 
     return 0.65;
+  }
+
+  private intentOptionsFor(request: TutorRequest): string[] {
+    const text = this.requestText(request);
+
+    if (this.isParsingRequest(request)) {
+      return PARSING_INTENT_OPTIONS;
+    }
+
+    if (/calculus|integral|derivative|limit|algebra|equation|substitution|matrix|vector|sin|cos|ln|log/.test(text)) {
+      return MATH_INTENT_OPTIONS;
+    }
+
+    return GENERAL_INTENT_OPTIONS;
+  }
+
+  private isParsingRequest(request: TutorRequest): boolean {
+    const text = this.requestText(request);
+    return /follow|first|grammar|parser|parsing|production|nonterminal|terminal/.test(text);
+  }
+
+  private requestText(request: TutorRequest): string {
+    return [
+      request.regionText,
+      request.courseHint ?? "",
+      request.nearbyContext ?? "",
+      request.selectedIntent ?? ""
+    ]
+      .join(" ")
+      .toLowerCase();
   }
 }
