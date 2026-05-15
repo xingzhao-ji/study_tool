@@ -127,4 +127,27 @@ describe("MockTutorProvider", () => {
     assert.match(response.answer ?? "", /correct so far/i);
     assert.doesNotMatch(response.answer ?? "", /First issue/i);
   });
+
+  it("flags a missing coefficient in a power-rule derivative", async () => {
+    const response = await provider.ask({
+      regionText: "d/dx x^3 = x^2",
+      marker: "check?",
+      courseHint: "Calculus"
+    });
+
+    assert.equal(response.type, "tutor_answer");
+    assert.match(response.answer ?? "", /First issue/i);
+    assert.match(response.answer ?? "", /multiply by the old exponent/i);
+  });
+
+  it("recognizes a correct power-rule derivative", async () => {
+    const response = await provider.ask({
+      regionText: "d/dx x^3 = 3x^2",
+      marker: "✓?",
+      courseHint: "Calculus"
+    });
+
+    assert.equal(response.type, "tutor_answer");
+    assert.match(response.answer ?? "", /correct so far/i);
+  });
 });

@@ -141,6 +141,11 @@ export class MockTutorProvider implements TutorProvider {
     const mentionsFollowAndFirst = text.includes("follow") && text.includes("first");
     const excludesEpsilon = /minus\s*(ε|epsilon)|excluding\s*(ε|epsilon)|without\s*(ε|epsilon)|-\s*ε/.test(text);
     const hasFollowCondition = /(when|if).*(follows|after|suffix|immediately)/.test(text);
+    const powerRuleCheck = this.checkPowerRuleDerivative(text, contextLead);
+
+    if (powerRuleCheck) {
+      return powerRuleCheck;
+    }
 
     if (mentionsFollowAndFirst && excludesEpsilon && hasFollowCondition) {
       return `${contextLead}This is correct so far. Next, check whether the suffix after A can vanish; only then should FOLLOW of the left-hand side flow into FOLLOW(A).`;
@@ -159,6 +164,40 @@ export class MockTutorProvider implements TutorProvider {
     }
 
     return `${contextLead}First issue to check: compare this line with the exact rule used in the previous step. Verify the condition, remove any impossible symbol, then keep only the next correction.`;
+  }
+
+  private checkPowerRuleDerivative(text: string, contextLead: string): string | null {
+    const compact = text.replace(/\s+/g, "");
+    const match = compact.match(/d\/dx\(?x\^(\d+)\)?=([+-]?\d*)x\^(\d+)/);
+
+    if (!match) {
+      return null;
+    }
+
+    const exponent = Number.parseInt(match[1], 10);
+    const coefficientText = match[2];
+    const coefficient = coefficientText === "" || coefficientText === "+"
+      ? 1
+      : coefficientText === "-"
+        ? -1
+        : Number.parseInt(coefficientText, 10);
+    const newExponent = Number.parseInt(match[3], 10);
+    const expectedCoefficient = exponent;
+    const expectedExponent = exponent - 1;
+
+    if (coefficient === expectedCoefficient && newExponent === expectedExponent) {
+      return `${contextLead}This is correct so far. Next, use the result in the larger expression or simplify any remaining terms.`;
+    }
+
+    if (newExponent === expectedExponent) {
+      return `${contextLead}First issue: with the power rule, multiply by the old exponent. For x^${exponent}, the coefficient should be ${expectedCoefficient}.`;
+    }
+
+    if (coefficient === expectedCoefficient) {
+      return `${contextLead}First issue: with the power rule, reduce the exponent by 1. For x^${exponent}, the new exponent should be ${expectedExponent}.`;
+    }
+
+    return `${contextLead}First issue: apply both parts of the power rule. Multiply by ${expectedCoefficient} and reduce the exponent to ${expectedExponent}.`;
   }
 
   private confidenceFor(marker: string, selectedIntent?: string | null): number {
