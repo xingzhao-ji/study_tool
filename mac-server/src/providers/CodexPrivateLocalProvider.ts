@@ -218,7 +218,8 @@ function parseIntentOptions(text: string): string[] {
   const lines = text
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((line) => !isIntentWrapperLine(line));
   const markedOptionLines = lines.filter((line) => /^[-*]\s+/.test(line) || /^\d+[.)]\s+/.test(line));
   const candidateLines = markedOptionLines.length >= 3 ? markedOptionLines : lines;
   const options: string[] = [];
@@ -256,4 +257,14 @@ function parseJsonIntentOptions(text: string): string[] {
   } catch {
     return [];
   }
+}
+
+function isIntentWrapperLine(line: string): boolean {
+  const normalized = line.toLowerCase().replace(/\s+/g, " ").trim();
+
+  return (
+    /^here (are|is)\b.*\b(intentions?|options?)\b/.test(normalized) ||
+    /^(likely )?(intentions?|options?):$/.test(normalized) ||
+    /^(pick|choose) (whichever|one)\b/.test(normalized)
+  );
 }

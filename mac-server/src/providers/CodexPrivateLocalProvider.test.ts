@@ -82,6 +82,37 @@ describe("CodexPrivateLocalProvider", () => {
     assert.deepEqual(response.options, ["Explain the rule", "Check my work", "Give one hint"]);
   });
 
+  it("ignores Codex preface text around plain intent option lines", async () => {
+    const runner = new FakeCommandRunner([
+      {
+        stdout: [
+          "Likely intentions:",
+          "Explain the rule",
+          "Check my work",
+          "Give one hint",
+          "Show a similar example",
+          "Give the next step only"
+        ].join("\n")
+      }
+    ]);
+    const provider = new CodexPrivateLocalProvider({ commandRunner: runner, timeoutMs: 500 });
+
+    const response = await provider.ask({
+      regionText: "u = x^2 + 1",
+      marker: "?",
+      courseHint: "Calculus"
+    });
+
+    assert.equal(response.type, "intent_options");
+    assert.deepEqual(response.options, [
+      "Explain the rule",
+      "Check my work",
+      "Give one hint",
+      "Show a similar example",
+      "Give the next step only"
+    ]);
+  });
+
   it("returns tutor answer text through a fake command runner when intent is selected", async () => {
     const runner = new FakeCommandRunner([
       {
