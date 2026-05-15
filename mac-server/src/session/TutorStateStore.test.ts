@@ -58,4 +58,35 @@ describe("InMemoryTutorStateStore", () => {
     assert.equal(session.latest?.detectedQuestion.id, first.id);
     assert.equal(session.latest?.tutorResponse.answer, "first answer");
   });
+
+  it("undoes an unanswered intent-options detection without removing the previous turn", () => {
+    const store = new InMemoryTutorStateStore("test-session");
+    const answered = store.addDetection({
+      regionText: "FOLLOW(A) includes FIRST(B)",
+      marker: "?",
+      courseHint: "CS 132 parsing"
+    });
+    store.recordResponse(answered, {
+      type: "tutor_answer",
+      answer: "previous answer",
+      provider: "mock"
+    });
+    const unanswered = store.addDetection({
+      regionText: "new boxed work",
+      marker: "?",
+      courseHint: "CS 132 parsing"
+    });
+    store.recordResponse(unanswered, {
+      type: "intent_options",
+      options: ["Explain", "Check", "Example"],
+      provider: "mock"
+    });
+
+    const session = store.undoLatest();
+
+    assert.equal(session.detections.length, 1);
+    assert.equal(session.turns.length, 1);
+    assert.equal(session.latest?.detectedQuestion.id, answered.id);
+    assert.equal(session.latest?.tutorResponse.answer, "previous answer");
+  });
 });
