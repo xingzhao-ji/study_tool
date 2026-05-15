@@ -116,6 +116,8 @@ describe("mac server", () => {
     assert.match(scriptBody, /markPairingRejected/);
     assert.match(scriptBody, /Pairing token rejected/);
     assert.match(scriptBody, /response\.status === 401/);
+    assert.match(scriptBody, /Enter boxed text and marker/);
+    assert.match(scriptBody, /detectionState\.textContent = "Error"/);
     assert.match(scriptBody, /prepareFollowUpCheck/);
     assert.match(scriptBody, /Enter the new boxed work to check/);
     assert.match(scriptBody, /draftingFollowUpCheck/);

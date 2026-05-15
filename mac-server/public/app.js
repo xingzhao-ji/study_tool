@@ -239,7 +239,15 @@ function currentRequest() {
 async function submitAsk() {
   const request = currentRequest();
 
-  if (!request.regionText || !request.marker || (pairingRequired && !paired)) {
+  if (!request.regionText || !request.marker) {
+    detectionState.textContent = "Missing input";
+    renderError("Enter boxed text and marker before simulating.");
+    return;
+  }
+
+  if (pairingRequired && !paired) {
+    detectionState.textContent = "Pairing required";
+    renderError("Enter the pairing token before simulating.");
     return;
   }
 
@@ -257,6 +265,7 @@ async function submitAsk() {
     const body = await response.json();
 
     if (!response.ok) {
+      detectionState.textContent = "Error";
       renderError(body.answer ?? "Detection failed.");
       return;
     }
@@ -265,6 +274,7 @@ async function submitAsk() {
     scrollToResults(body.tutorResponse?.type);
     await loadSession();
   } catch (error) {
+    detectionState.textContent = "Error";
     renderError("The local tutor server did not respond.");
   } finally {
     askButton.disabled = false;
