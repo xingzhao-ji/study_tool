@@ -130,7 +130,7 @@ cd mac-server
 TUTOR_PROVIDER=codex_private_local npm run dev
 ```
 
-The Codex provider shells out only to `codex exec` through a safe adapter when `/ask` is called. It does not read auth files, inspect `~/.codex`, inspect `~/.openclaw`, or read local private config directly. The default timeout is 45 seconds:
+The Codex provider shells out only to `codex exec` through a safe adapter when a tutor request is handled through `/ask`, `/simulate-detection`, or `/select-intent`. It does not read auth files, inspect `~/.codex`, inspect `~/.openclaw`, or read local private config directly. The default timeout is 45 seconds:
 
 ```bash
 cd mac-server
