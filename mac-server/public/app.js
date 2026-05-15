@@ -467,6 +467,44 @@ async function undoLastTurn() {
   }
 }
 
+async function clearSessionHistory() {
+  if (pairingRequired && !paired) {
+    renderError("Enter the pairing token before clearing the session.");
+    return;
+  }
+
+  if (!window.confirm("Clear this tutor session history?")) {
+    return;
+  }
+
+  clearButton.disabled = true;
+
+  try {
+    const response = await apiFetch("/clear-session", { method: "POST" });
+
+    if (response.status === 401 && pairingRequired) {
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error("clear failed");
+    }
+
+    currentDetection = null;
+    draftingFollowUpCheck = false;
+    clearIntentOptions();
+    detectionState.textContent = "Ready";
+    answerExpanded = false;
+    renderAnswerText("");
+    responseType.textContent = "Ready";
+    await loadSession();
+  } catch (error) {
+    renderError("The local tutor server could not clear this session.");
+  } finally {
+    clearButton.disabled = false;
+  }
+}
+
 async function copyCurrentAnswer() {
   if (!currentAnswerText || !navigator.clipboard?.writeText) {
     renderError("Copy is unavailable in this browser.");
@@ -733,21 +771,7 @@ form.addEventListener("submit", (event) => {
   submitAsk();
 });
 
-clearButton.addEventListener("click", async () => {
-  if (!window.confirm("Clear this tutor session history?")) {
-    return;
-  }
-
-  await apiFetch("/clear-session", { method: "POST" });
-  currentDetection = null;
-  draftingFollowUpCheck = false;
-  clearIntentOptions();
-  detectionState.textContent = "Ready";
-  answerExpanded = false;
-  renderAnswerText("");
-  responseType.textContent = "Ready";
-  await loadSession();
-});
+clearButton.addEventListener("click", clearSessionHistory);
 
 resetFormButton.addEventListener("click", resetForm);
 

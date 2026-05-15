@@ -113,6 +113,9 @@ describe("mac server", () => {
     assert.match(scriptBody, /scrollToResults/);
     assert.match(scriptBody, /formatTurnTime/);
     assert.match(scriptBody, /Clear this tutor session history/);
+    assert.match(scriptBody, /clearSessionHistory/);
+    assert.match(scriptBody, /Enter the pairing token before clearing the session/);
+    assert.match(scriptBody, /The local tutor server could not clear this session/);
     assert.match(scriptBody, /markPairingRejected/);
     assert.match(scriptBody, /Pairing token rejected/);
     assert.match(scriptBody, /response\.status === 401/);
