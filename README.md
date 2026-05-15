@@ -122,8 +122,39 @@ The browser UI is served by the Mac server and uses the same local endpoints:
 - `GET /health`
 - `GET /providers`
 - `POST /ask`
+- `POST /simulate-detection`
+- `POST /select-intent`
+- `GET /latest`
+- `GET /session`
+- `POST /clear-session`
 
 It keeps tutor turns only in memory for the current page session. It does not use browser storage, save screenshots, capture frames, run OCR, or read Goodnotes.
+
+## Session API
+
+Simulate a detected Goodnotes region:
+
+```bash
+curl -X POST http://localhost:3000/simulate-detection \
+  -H "Content-Type: application/json" \
+  -d '{"regionText":"FOLLOW(A) includes FIRST(B)","marker":"?","courseHint":"CS 132 parsing"}'
+```
+
+Select an intent for the latest detected question:
+
+```bash
+curl -X POST http://localhost:3000/select-intent \
+  -H "Content-Type: application/json" \
+  -d '{"selectedIntent":"Explain when FOLLOW includes FIRST"}'
+```
+
+Inspect or clear in-memory state:
+
+```bash
+curl http://localhost:3000/latest
+curl http://localhost:3000/session
+curl -X POST http://localhost:3000/clear-session
+```
 
 ## Example Tutor Request
 
@@ -139,6 +170,7 @@ When the marker is exactly `?` and no `selectedIntent` is provided, the mock tut
 
 - This milestone does not read Goodnotes, capture the screen, process images, run OCR, or shell out to Codex.
 - The Milestone 3 UI stores tutor turns only in browser memory for the current open page.
+- Session state is currently in memory only on the Mac server. Restarting the server clears it.
 - The Codex provider adapter does not read `~/.codex`, `~/.openclaw`, environment auth files, browser profiles, or system credential stores. Runtime Codex calls are explicit opt-in via `TUTOR_PROVIDER=codex_private_local`.
 - Do not commit secrets, authentication files, screenshots, captured frames, OCR logs, local study data, or private session logs.
 - `.env`, `auth.json`, `.codex`, `.openclaw`, captured frame directories, log directories, screenshots, and local study data paths are ignored by Git.

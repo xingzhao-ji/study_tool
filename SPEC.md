@@ -56,6 +56,25 @@ Milestone 3 adds a browser-based local companion UI served by the Mac server at 
 
 The UI is a prototype for the future companion surface. It must not capture the screen, read Goodnotes, run OCR, save study data, use browser storage, or invoke Codex.
 
+## Session State
+
+The Mac server stores one in-memory tutor session by default. It tracks:
+
+- Detected questions from simulated boxed regions.
+- The latest detected question and tutor response.
+- Tutor turns that produced answers.
+- Previous tutor state passed into follow-up checks, including `check?` and `✓?`.
+
+Session endpoints:
+
+- `POST /simulate-detection`: creates a detected question and asks the active provider.
+- `POST /select-intent`: applies the selected intent to a detected question and asks the active provider for an answer.
+- `GET /latest`: returns the latest detection and response.
+- `GET /session`: returns the full in-memory session.
+- `POST /clear-session`: clears in-memory detections and turns.
+
+The first implementation is intentionally volatile and private. It does not persist session state to disk.
+
 ## Future iPad ReplayKit Capture
 
 A later milestone may add iPad screen capture through ReplayKit or a related Apple-supported capture route. That work must remain privacy-preserving and should avoid storing raw frames by default. Any persisted frames must be opt-in and clearly separated from normal runtime behavior.

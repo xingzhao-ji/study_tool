@@ -4,6 +4,11 @@ import express, { type Express, type Request, type Response } from "express";
 import { z } from "zod";
 import type { TutorProvider } from "./providers/TutorProvider.js";
 import { TUTOR_PROVIDER_DESCRIPTORS } from "./providers/ProviderFactory.js";
+import {
+  InMemoryTutorStateStore,
+  requestFromDetection,
+  type DetectionInput
+} from "./session/TutorStateStore.js";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.resolve(currentDir, "../public");
@@ -27,7 +32,23 @@ const askSchema = z.object({
   imagePath: z.string().optional()
 });
 
-export function createApp(provider: TutorProvider): Express {
+const detectionSchema = z.object({
+  regionText: z.string().min(1),
+  marker: z.string().min(1),
+  courseHint: z.string().optional(),
+  nearbyContext: z.string().optional(),
+  confidence: z.number().min(0).max(1).optional()
+});
+
+const selectIntentSchema = z.object({
+  questionId: z.string().optional(),
+  selectedIntent: z.string().min(1)
+});
+
+export function createApp(
+  provider: TutorProvider,
+  stateStore = new InMemoryTutorStateStore()
+): Express {
   const app = express();
 
   app.use(express.static(publicDir));
@@ -72,6 +93,113 @@ export function createApp(provider: TutorProvider): Express {
         raw: error instanceof Error ? error.message : error
       });
     }
+  });
+
+  app.post("/simulate-detection", async (request: Request, response: Response) => {
+    const parsed = detectionSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      response.status(400).json({
+        type: "error",
+        answer: "Invalid detection request body.",
+        provider: provider.name,
+        raw: parsed.error.format()
+      });
+      return;
+    }
+
+    try {
+      const detectedQuestion = stateStore.addDetection(parsed.data as DetectionInput);
+      const previousTutorState = stateStore.previousTutorState();
+      const tutorResponse = await provider.ask(
+        requestFromDetection(detectedQuestion, previousTutorState)
+      );
+      stateStore.recordResponse(detectedQuestion, tutorResponse);
+      response.json({
+        sessionId: stateStore.getSession().id,
+        detectedQuestion,
+        tutorResponse
+      });
+    } catch (error) {
+      response.status(500).json({
+        type: "error",
+        answer: "Tutor provider failed while handling the simulated detection.",
+        provider: provider.name,
+        raw: error instanceof Error ? error.message : error
+      });
+    }
+  });
+
+  app.post("/select-intent", async (request: Request, response: Response) => {
+    const parsed = selectIntentSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      response.status(400).json({
+        type: "error",
+        answer: "Invalid intent selection body.",
+        provider: provider.name,
+        raw: parsed.error.format()
+      });
+      return;
+    }
+
+    const questionId = parsed.data.questionId ?? stateStore.latestDetection()?.id;
+
+    if (!questionId) {
+      response.status(404).json({
+        type: "error",
+        answer: "No detected question is available for intent selection.",
+        provider: provider.name
+      });
+      return;
+    }
+
+    const detectedQuestion = stateStore.applySelectedIntent(questionId, parsed.data.selectedIntent);
+
+    if (!detectedQuestion) {
+      response.status(404).json({
+        type: "error",
+        answer: `Detected question "${questionId}" was not found.`,
+        provider: provider.name
+      });
+      return;
+    }
+
+    try {
+      const tutorResponse = await provider.ask(
+        requestFromDetection(detectedQuestion, stateStore.previousTutorState())
+      );
+      stateStore.recordResponse(detectedQuestion, tutorResponse);
+      response.json({
+        sessionId: stateStore.getSession().id,
+        detectedQuestion,
+        tutorResponse
+      });
+    } catch (error) {
+      response.status(500).json({
+        type: "error",
+        answer: "Tutor provider failed while handling the selected intent.",
+        provider: provider.name,
+        raw: error instanceof Error ? error.message : error
+      });
+    }
+  });
+
+  app.get("/latest", (_request: Request, response: Response) => {
+    response.json({
+      sessionId: stateStore.getSession().id,
+      latest: stateStore.getLatest()
+    });
+  });
+
+  app.get("/session", (_request: Request, response: Response) => {
+    response.json(stateStore.getSession());
+  });
+
+  app.post("/clear-session", (_request: Request, response: Response) => {
+    response.json({
+      session: stateStore.clear()
+    });
   });
 
   return app;
