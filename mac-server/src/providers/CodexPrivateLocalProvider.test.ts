@@ -181,6 +181,27 @@ describe("CodexPrivateLocalProvider", () => {
     assert.match((response.raw as { stderr: string }).stderr, /ENOENT/);
   });
 
+  it("returns structured exit errors when the fake command runner fails", async () => {
+    const runner = new FakeCommandRunner([
+      {
+        stdout: "",
+        stderr: "Codex failed",
+        exitCode: 2
+      }
+    ]);
+    const provider = new CodexPrivateLocalProvider({ commandRunner: runner, timeoutMs: 500 });
+
+    const response = await provider.ask({
+      regionText: "work",
+      marker: "next?"
+    });
+
+    assert.equal(response.type, "error");
+    assert.equal((response.raw as { code: string }).code, "codex_exit_error");
+    assert.equal((response.raw as { exitCode: number }).exitCode, 2);
+    assert.match((response.raw as { stderr: string }).stderr, /Codex failed/);
+  });
+
   it("queues Codex calls so only one command runs at a time", async () => {
     const runner = new FakeCommandRunner([
       { stdout: "first answer", delayMs: 10 },
