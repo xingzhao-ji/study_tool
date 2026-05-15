@@ -13,6 +13,7 @@ This repository currently implements Milestones 0, 1, 2, and 3:
 - A provider-selection boundary for `mock` and `codex_private_local`.
 - `GET /providers` for provider status and capability discovery.
 - A local browser companion UI for entering boxed text, selecting markers, choosing intent options, and viewing tutor turns.
+- A connection/status card for iPhone Safari and desktop browser use.
 
 The Codex private local provider is intentionally not implemented yet. It only returns generated prompt metadata and a privacy-safe not-implemented response.
 

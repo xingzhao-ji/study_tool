@@ -29,6 +29,31 @@
       </section>
 
       <section class="dashboard" aria-label="Companion dashboard">
+        <section class="control-card status-card">
+          <div class="panel-heading">
+            <h2>Connection</h2>
+            <span id="connectionUpdated">Not checked</span>
+          </div>
+          <dl class="status-grid">
+            <div>
+              <dt>Server</dt>
+              <dd id="connectionService">Checking</dd>
+            </div>
+            <div>
+              <dt>Provider</dt>
+              <dd id="connectionProvider">Checking</dd>
+            </div>
+            <div>
+              <dt>Session</dt>
+              <dd id="connectionSession">Checking</dd>
+            </div>
+            <div>
+              <dt>Pairing</dt>
+              <dd id="connectionPairing">Local</dd>
+            </div>
+          </dl>
+        </section>
+
         <section class="control-card">
           <div class="panel-heading">
             <h2>Simulate Detection</h2>

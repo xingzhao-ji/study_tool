@@ -51,6 +51,8 @@ describe("mac server", () => {
     assert.match(body, /Goodnotes Companion Tutor/);
     assert.match(body, /id="regionText"/);
     assert.match(body, /id="marker"/);
+    assert.match(body, /id="connectionProvider"/);
+    assert.match(body, /id="connectionSession"/);
     assert.match(body, /id="intentOptions"/);
     assert.match(body, /id="turns"/);
   });

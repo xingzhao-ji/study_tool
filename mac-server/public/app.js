@@ -22,6 +22,11 @@ const pairButton = document.querySelector("#pairButton");
 const frameFile = document.querySelector("#frameFile");
 const uploadFrameButton = document.querySelector("#uploadFrameButton");
 const frameStatus = document.querySelector("#frameStatus");
+const connectionService = document.querySelector("#connectionService");
+const connectionProvider = document.querySelector("#connectionProvider");
+const connectionSession = document.querySelector("#connectionSession");
+const connectionPairing = document.querySelector("#connectionPairing");
+const connectionUpdated = document.querySelector("#connectionUpdated");
 
 let pairingToken = "";
 let pairingRequired = false;
@@ -45,6 +50,7 @@ async function loadPairingState() {
   pairingRequired = body.required === true;
   paired = !pairingRequired;
   pairingPanel.hidden = !pairingRequired;
+  connectionPairing.textContent = pairingRequired ? "Token required" : "Local only";
 
   if (!pairingRequired) {
     await refreshAll();
@@ -53,6 +59,9 @@ async function loadPairingState() {
     serviceStatus.textContent = "Pairing required";
     serviceStatus.dataset.state = "offline";
     providerStatus.textContent = "Enter token";
+    connectionService.textContent = "Waiting for token";
+    connectionProvider.textContent = "Locked";
+    connectionUpdated.textContent = "Not paired";
   }
 }
 
@@ -80,10 +89,21 @@ async function loadStatus() {
     providerStatus.textContent = active
       ? `${providers.activeProvider} · ${active.status}`
       : providers.activeProvider;
+    connectionService.textContent = health.ok ? "Online" : "Unavailable";
+    connectionProvider.textContent = active
+      ? `${providers.activeProvider} (${active.status})`
+      : providers.activeProvider;
+    connectionUpdated.textContent = new Date().toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit"
+    });
   } catch (error) {
     serviceStatus.textContent = pairingRequired && !paired ? "Pairing required" : "Offline";
     serviceStatus.dataset.state = "offline";
     providerStatus.textContent = "Provider unavailable";
+    connectionService.textContent = pairingRequired && !paired ? "Waiting for token" : "Offline";
+    connectionProvider.textContent = "Unavailable";
   }
 }
 
@@ -101,9 +121,11 @@ async function loadSession() {
 
     const session = await response.json();
     sessionStatus.textContent = `Session ${shortId(session.id)}`;
+    connectionSession.textContent = `${shortId(session.id)} · ${session.turns.length} turns`;
     renderSession(session);
   } catch (error) {
     sessionStatus.textContent = "Session unavailable";
+    connectionSession.textContent = "Unavailable";
   }
 }
 
@@ -354,6 +376,7 @@ clearButton.addEventListener("click", async () => {
 pairButton.addEventListener("click", async () => {
   pairingToken = pairingTokenInput.value.trim();
   paired = Boolean(pairingToken);
+  connectionPairing.textContent = paired ? "Paired" : "Token required";
   await refreshAll();
   startPolling();
 });
