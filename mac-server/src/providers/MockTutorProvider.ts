@@ -142,9 +142,14 @@ export class MockTutorProvider implements TutorProvider {
     const excludesEpsilon = /minus\s*(ε|epsilon)|excluding\s*(ε|epsilon)|without\s*(ε|epsilon)|-\s*ε/.test(text);
     const hasFollowCondition = /(when|if).*(follows|after|suffix|immediately)/.test(text);
     const powerRuleCheck = this.checkPowerRuleDerivative(text, contextLead);
+    const linearEquationCheck = this.checkLinearEquationSolution(request, contextLead);
 
     if (powerRuleCheck) {
       return powerRuleCheck;
+    }
+
+    if (linearEquationCheck) {
+      return linearEquationCheck;
     }
 
     if (mentionsFollowAndFirst && excludesEpsilon && hasFollowCondition) {
@@ -200,6 +205,35 @@ export class MockTutorProvider implements TutorProvider {
     return `${contextLead}First issue: apply both parts of the power rule. Multiply by ${expectedCoefficient} and reduce the exponent to ${expectedExponent}.`;
   }
 
+  private checkLinearEquationSolution(request: TutorRequest, contextLead: string): string | null {
+    const assignment = request.regionText.match(/\bx\s*=\s*([+-]?\s*\d+(?:\.\d+)?)/i);
+    const equation = request.nearbyContext?.match(
+      /([+-]?\s*(?:\d+(?:\.\d+)?)?)\s*x\s*([+-]\s*\d+(?:\.\d+)?)?\s*=\s*([+-]?\s*\d+(?:\.\d+)?)/i
+    );
+
+    if (!assignment || !equation) {
+      return null;
+    }
+
+    const candidate = parseNumber(assignment[1]);
+    const coefficient = parseCoefficient(equation[1]);
+    const constant = equation[2] ? parseNumber(equation[2]) : 0;
+    const rightSide = parseNumber(equation[3]);
+
+    if ([candidate, coefficient, constant, rightSide].some((value) => Number.isNaN(value)) || coefficient === 0) {
+      return null;
+    }
+
+    const leftSide = coefficient * candidate + constant;
+    const expected = (rightSide - constant) / coefficient;
+
+    if (nearlyEqual(leftSide, rightSide)) {
+      return `${contextLead}This is correct so far: substituting x = ${formatNumber(candidate)} gives ${formatLinearLeftSide(coefficient, candidate, constant)} = ${formatNumber(rightSide)}. Next, box the final answer or move to the next step.`;
+    }
+
+    return `${contextLead}First issue: substitute x = ${formatNumber(candidate)} back into ${formatLinearEquation(coefficient, constant, rightSide)}; the left side becomes ${formatNumber(leftSide)}, not ${formatNumber(rightSide)}. Solving gives x = ${formatNumber(expected)}.`;
+  }
+
   private confidenceFor(marker: string, selectedIntent?: string | null): number {
     if (selectedIntent) {
       return 0.8;
@@ -241,4 +275,75 @@ export class MockTutorProvider implements TutorProvider {
       .join(" ")
       .toLowerCase();
   }
+}
+
+function parseCoefficient(value: string): number {
+  const normalized = value.replace(/\s+/g, "");
+
+  if (normalized === "" || normalized === "+") {
+    return 1;
+  }
+
+  if (normalized === "-") {
+    return -1;
+  }
+
+  return Number.parseFloat(normalized);
+}
+
+function parseNumber(value: string): number {
+  return Number.parseFloat(value.replace(/\s+/g, ""));
+}
+
+function nearlyEqual(left: number, right: number): boolean {
+  return Math.abs(left - right) < 1e-9;
+}
+
+function formatNumber(value: number): string {
+  if (nearlyEqual(value, Math.round(value))) {
+    return String(Math.round(value));
+  }
+
+  return String(Number(value.toFixed(4)));
+}
+
+function formatLinearEquation(coefficient: number, constant: number, rightSide: number): string {
+  return `${formatXTerm(coefficient)}${formatConstantTerm(constant)} = ${formatNumber(rightSide)}`;
+}
+
+function formatLinearLeftSide(coefficient: number, value: number, constant: number): string {
+  return `${formatCoefficientForSubstitution(coefficient)}(${formatNumber(value)})${formatConstantTerm(constant)}`;
+}
+
+function formatXTerm(coefficient: number): string {
+  if (coefficient === 1) {
+    return "x";
+  }
+
+  if (coefficient === -1) {
+    return "-x";
+  }
+
+  return `${formatNumber(coefficient)}x`;
+}
+
+function formatCoefficientForSubstitution(coefficient: number): string {
+  if (coefficient === 1) {
+    return "";
+  }
+
+  if (coefficient === -1) {
+    return "-";
+  }
+
+  return formatNumber(coefficient);
+}
+
+function formatConstantTerm(constant: number): string {
+  if (nearlyEqual(constant, 0)) {
+    return "";
+  }
+
+  const sign = constant > 0 ? "+" : "-";
+  return ` ${sign} ${formatNumber(Math.abs(constant))}`;
 }

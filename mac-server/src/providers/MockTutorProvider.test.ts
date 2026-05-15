@@ -150,4 +150,32 @@ describe("MockTutorProvider", () => {
     assert.equal(response.type, "tutor_answer");
     assert.match(response.answer ?? "", /correct so far/i);
   });
+
+  it("recognizes a correct linear equation solution", async () => {
+    const response = await provider.ask({
+      regionText: "x = 5",
+      marker: "✓?",
+      courseHint: "Algebra",
+      nearbyContext: "Solve 2x + 3 = 13"
+    });
+
+    assert.equal(response.type, "tutor_answer");
+    assert.match(response.answer ?? "", /correct so far/i);
+    assert.match(response.answer ?? "", /substituting x = 5/i);
+    assert.doesNotMatch(response.answer ?? "", /First issue/i);
+  });
+
+  it("flags an incorrect linear equation solution with the substitution result", async () => {
+    const response = await provider.ask({
+      regionText: "x = 4",
+      marker: "check?",
+      courseHint: "Algebra",
+      nearbyContext: "Solve 2x + 3 = 13"
+    });
+
+    assert.equal(response.type, "tutor_answer");
+    assert.match(response.answer ?? "", /First issue/i);
+    assert.match(response.answer ?? "", /left side becomes 11/i);
+    assert.match(response.answer ?? "", /x = 5/i);
+  });
 });
