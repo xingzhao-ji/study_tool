@@ -81,10 +81,10 @@ Designed for large local files, but first implementation has only been tested on
 Current limitations:
 
 - JSON upload bodies are buffered by Express JSON parsing.
-- The web UI reads selected files into browser memory before uploading.
-- Non-JSON API uploads stream to disk first, then extraction rereads the local file for indexing.
+- Browser uploads and non-JSON API uploads stream request bytes to local storage first.
+- Extraction rereads the local file for indexing.
 - Index state is stored as JSON metadata, not sqlite.
 - Retrieval is lexical/BM25-like, not embedding-based.
 - Indexing is synchronous for the current request.
 
-The next large-file step should add a streaming upload route, incremental extraction/index jobs, and a durable local metadata store before claiming gigabyte-scale support.
+The next large-file step should add incremental extraction/index jobs with durable progress tracking and a stronger local metadata store before claiming gigabyte-scale support.

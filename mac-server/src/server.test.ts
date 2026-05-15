@@ -145,6 +145,9 @@ describe("mac server", () => {
     assert.match(scriptBody, /previewRetrieval/);
     assert.match(scriptBody, /renderSources/);
     assert.match(scriptBody, /FileReader/);
+    assert.match(scriptBody, /"x-file-name": file\.name/);
+    assert.match(scriptBody, /body: file/);
+    assert.doesNotMatch(scriptBody, /readFileAsText\(file\)/);
     assert.match(scriptBody, /useCourseGrounding/);
     for (const endpoint of [
       "/pairing",

@@ -46,7 +46,7 @@ The service stores uploaded originals under ignored `data/course-files/`, extrac
 
 When `/ask`, `/simulate-detection`, or `/select-intent` includes `courseId` and `useCourseGrounding: true`, the server retrieves relevant chunks and adds them to `TutorRequest.retrievedContext`. `TutorResponse` can include `sources`, `grounded`, and `groundingStatus`.
 
-The browser UI exposes course selection, course creation, multi-file upload, index status, retrieval preview, grounding toggle, and source labels. Upload currently reads selected files in the browser and sends buffered JSON to the local server.
+The browser UI exposes course selection, course creation, multi-file upload, index status, retrieval preview, grounding toggle, and source labels. Browser uploads send selected `File` objects to the streaming upload route instead of reading file text into the page first.
 
 ## Providers
 

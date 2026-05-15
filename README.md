@@ -322,7 +322,7 @@ curl -X DELETE http://localhost:3000/courses/<courseId>
 
 To delete all local course data manually, stop the server and remove `data/course-files/`, `data/extracted-text/`, and `data/course-index/`. Do not commit anything under `data/`.
 
-Designed for large local files, but first implementation has only been tested on small/medium fixtures. JSON upload bodies and browser UI uploads are buffered. Non-JSON API uploads stream request bytes to local storage first, but text extraction still rereads the stored file for indexing.
+Designed for large local files, but first implementation has only been tested on small/medium fixtures. JSON upload bodies are buffered. Browser uploads and non-JSON API uploads stream request bytes to local storage first, but text extraction still rereads the stored file for indexing.
 
 ## Session API
 
@@ -418,7 +418,7 @@ When the marker is exactly `?` and no `selectedIntent` is provided, the mock tut
 
 - The tutor can be useful for MVP testing, but the mock provider is rule-based and intentionally limited.
 - Local retrieval is lexical/BM25-like, not embeddings. It works for exact course terms and small fixtures but is not a semantic search engine yet.
-- Browser course upload currently reads selected files in the browser and sends buffered JSON to the local server. Non-JSON API uploads stream to disk first, but indexing is still synchronous.
+- Browser course upload sends selected files to the streaming upload route, but indexing is still synchronous and extraction rereads the stored file.
 - Session state is single-process memory, not a database.
 - Pairing protects LAN API routes, but this is still a personal-use local/LAN tool, not a hardened multi-user service.
 - Saved frames are opt-in with `SAVE_FRAMES=true` and should not be committed.
@@ -426,7 +426,7 @@ When the marker is exactly `?` and no `selectedIntent` is provided, the mock tut
 ## Next Steps
 
 1. Add local PDF text extraction when a reliable package is available.
-2. Replace buffered course upload with a streaming upload route.
+2. Move course extraction and indexing into incremental background jobs with visible progress.
 3. Keep hardening the web/iPhone Safari companion loop.
 4. Improve follow-up checking quality for more courses and mistake types.
 5. Exercise the opt-in Codex provider on a real local setup without making it default.

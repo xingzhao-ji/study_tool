@@ -426,15 +426,13 @@ async function uploadCourseFiles() {
 
   try {
     for (const file of files) {
-      const text = await readFileAsText(file);
       const response = await apiFetch(`/courses/${activeCourseId}/files`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          originalName: file.name,
-          mimeType: file.type || mimeTypeForFileName(file.name),
-          text
-        })
+        headers: {
+          "Content-Type": file.type || mimeTypeForFileName(file.name),
+          "x-file-name": file.name
+        },
+        body: file
       });
       const body = await response.json();
 
@@ -1196,15 +1194,6 @@ function readFileAsDataUrl(file) {
     reader.addEventListener("load", () => resolve(reader.result));
     reader.addEventListener("error", () => reject(reader.error));
     reader.readAsDataURL(file);
-  });
-}
-
-function readFileAsText(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.addEventListener("load", () => resolve(String(reader.result ?? "")));
-    reader.addEventListener("error", () => reject(reader.error));
-    reader.readAsText(file);
   });
 }
 
