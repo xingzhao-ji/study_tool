@@ -76,6 +76,25 @@ export async function runSmoke(log: LogFn = console.log): Promise<void> {
     assert.equal(streamed.file.status, "indexed");
     log("POST /courses/:id/files text/plain -> streamed fixture");
 
+    const streamedJson = await jsonRequest(
+      baseUrl,
+      "POST /courses/:id/files json stream",
+      `/courses/${courseId}/files`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "x-file-name": "follow-json.json"
+        },
+        rawBody: JSON.stringify({
+          note: "A streamed JSON upload says FOLLOW(A) receives FIRST(beta) except epsilon."
+        }),
+        expectedStatus: 201
+      }
+    );
+    assert.equal(streamedJson.file.status, "indexed");
+    log("POST /courses/:id/files json stream -> indexed fixture");
+
     const courses = await jsonRequest(baseUrl, "GET /courses", "/courses");
     assert.ok(courses.courses.some((candidate: { id: string }) => candidate.id === courseId));
     log("GET /courses -> includes course");
@@ -96,7 +115,7 @@ export async function runSmoke(log: LogFn = console.log): Promise<void> {
       "GET /courses/:id/index-status",
       `/courses/${courseId}/index-status`
     );
-    assert.equal(indexStatus.indexedFiles, 2);
+    assert.equal(indexStatus.indexedFiles, 3);
     assert.equal(indexStatus.chunkCount > 0, true);
     log("GET /courses/:id/index-status -> indexed");
 

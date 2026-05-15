@@ -453,7 +453,7 @@ async function uploadCourseFiles() {
       const response = await apiFetch(`/courses/${activeCourseId}/files`, {
         method: "POST",
         headers: {
-          "Content-Type": file.type || mimeTypeForFileName(file.name),
+          "Content-Type": contentTypeForCourseUpload(file),
           "x-file-name": file.name
         },
         body: file
@@ -1384,4 +1384,9 @@ function mimeTypeForFileName(name) {
   }
 
   return "text/plain";
+}
+
+function contentTypeForCourseUpload(file) {
+  const contentType = file.type || mimeTypeForFileName(file.name);
+  return contentType === "application/json" ? "application/octet-stream" : contentType;
 }
