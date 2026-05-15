@@ -31,7 +31,39 @@ function formatRequestContext(request: TutorRequest): string {
     `Selected intent: ${request.selectedIntent ?? "none"}`,
     `Course hint: ${request.courseHint ?? "none"}`,
     `Nearby context: ${request.nearbyContext ?? "none"}`,
+    `Course ID: ${request.courseId ?? "none"}`,
+    `Use course grounding: ${request.useCourseGrounding ? "yes" : "no"}`,
+    formatRetrievedContext(request),
     formatPreviousTutorState(request)
+  ].join("\n");
+}
+
+function formatRetrievedContext(request: TutorRequest): string {
+  if (!request.useCourseGrounding) {
+    return "Uploaded course material: disabled";
+  }
+
+  const chunks = request.retrievedContext?.slice(0, 5) ?? [];
+
+  if (chunks.length === 0) {
+    return [
+      "Uploaded course material: no relevant chunks retrieved",
+      "Grounding policy: say exactly that there is not enough support in the uploaded course material before giving any outside-course explanation."
+    ].join("\n");
+  }
+
+  const lines = chunks.map((chunk, index) => {
+    const page = chunk.pageNumber ? ` p.${chunk.pageNumber}` : "";
+    return [
+      `[${index + 1}] ${chunk.sourceLabel}${page} (score ${chunk.score})`,
+      compactLine(chunk.text)
+    ].join("\n");
+  });
+
+  return [
+    "Uploaded course material:",
+    ...lines,
+    "Grounding policy: prioritize these retrieved chunks. Cite only these source labels. If they do not support the answer, say: I do not see enough support for this in the uploaded course material."
   ].join("\n");
 }
 

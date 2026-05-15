@@ -13,6 +13,13 @@ import {
 import { formatSessionMarkdown } from "./session/SessionMarkdown.js";
 import type { PairingConfig } from "./security/Pairing.js";
 import { FrameStore } from "./frame/FrameStore.js";
+import {
+  CourseNotFoundError,
+  LocalCourseService,
+  type CourseService
+} from "./rag/CourseService.js";
+import type { RetrievedChunk, Course } from "./rag/types.js";
+import type { TutorRequest, TutorResponse } from "./types/tutor.js";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.resolve(currentDir, "../public");
@@ -23,13 +30,30 @@ const askSchema = z.object({
   selectedIntent: z.string().trim().min(1).nullable().optional(),
   courseHint: z.string().trim().optional(),
   nearbyContext: z.string().trim().optional(),
+  courseId: z.string().trim().min(1).optional(),
+  useCourseGrounding: z.boolean().optional(),
+  retrievedContext: z
+    .array(
+      z.object({
+        chunkId: z.string(),
+        courseId: z.string(),
+        fileId: z.string(),
+        sourceLabel: z.string(),
+        pageNumber: z.number().optional(),
+        text: z.string(),
+        score: z.number()
+      })
+    )
+    .optional(),
   previousTutorState: z
     .array(
       z.object({
         regionText: z.string(),
         marker: z.string(),
         selectedIntent: z.string().nullable().optional(),
-        answer: z.string().optional()
+        answer: z.string().optional(),
+        courseId: z.string().optional(),
+        useCourseGrounding: z.boolean().optional()
       })
     )
     .optional(),
@@ -41,6 +65,8 @@ const detectionSchema = z.object({
   marker: z.string().trim().min(1),
   courseHint: z.string().trim().optional(),
   nearbyContext: z.string().trim().optional(),
+  courseId: z.string().trim().min(1).optional(),
+  useCourseGrounding: z.boolean().optional(),
   confidence: z.number().min(0).max(1).optional()
 });
 
@@ -75,9 +101,27 @@ const selectIntentSchema = z.object({
   selectedIntent: z.string().trim().min(1)
 });
 
+const createCourseSchema = z.object({
+  name: z.string().trim().min(1),
+  description: z.string().trim().optional()
+});
+
+const addCourseFileSchema = z.object({
+  originalName: z.string().trim().min(1),
+  mimeType: z.string().trim().optional(),
+  text: z.string().optional(),
+  contentBase64: z.string().trim().optional()
+});
+
+const retrieveSchema = z.object({
+  query: z.string().trim().min(1),
+  topK: z.number().int().min(1).max(20).optional()
+});
+
 export interface ServerOptions {
   pairing?: PairingConfig;
   frameStore?: FrameStore;
+  courseService?: CourseService;
   codexStatusChecker?: () => Promise<CodexStatusResult>;
 }
 
@@ -88,6 +132,7 @@ export function createApp(
 ): Express {
   const app = express();
   const frameStore = options.frameStore ?? new FrameStore({ saveFrames: false });
+  const courseService = options.courseService ?? new LocalCourseService();
 
   app.use(express.static(publicDir));
   app.use(express.json({ limit: "12mb" }));
@@ -150,6 +195,155 @@ export function createApp(
     }
   });
 
+  app.get("/courses", async (_request: Request, response: Response) => {
+    response.json({
+      courses: await courseService.listCourses()
+    });
+  });
+
+  app.post("/courses", async (request: Request, response: Response) => {
+    const parsed = createCourseSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      response.status(400).json({
+        type: "error",
+        answer: validationErrorAnswer("Invalid course request body", parsed.error),
+        provider: provider.name,
+        raw: parsed.error.format()
+      });
+      return;
+    }
+
+    const course = await courseService.createCourse(parsed.data);
+    response.status(201).json({ course });
+  });
+
+  app.get("/courses/:courseId", async (request: Request, response: Response) => {
+    const course = await courseService.getCourse(request.params.courseId);
+
+    if (!course) {
+      response.status(404).json({
+        type: "error",
+        answer: `Course "${request.params.courseId}" was not found.`,
+        provider: provider.name
+      });
+      return;
+    }
+
+    response.json({ course });
+  });
+
+  app.delete("/courses/:courseId", async (request: Request, response: Response) => {
+    const deleted = await courseService.deleteCourse(request.params.courseId);
+
+    if (!deleted) {
+      response.status(404).json({
+        type: "error",
+        answer: `Course "${request.params.courseId}" was not found.`,
+        provider: provider.name
+      });
+      return;
+    }
+
+    response.json({ deleted: true });
+  });
+
+  app.get("/courses/:courseId/files", async (request: Request, response: Response) => {
+    const course = await courseService.getCourse(request.params.courseId);
+
+    if (!course) {
+      response.status(404).json({
+        type: "error",
+        answer: `Course "${request.params.courseId}" was not found.`,
+        provider: provider.name
+      });
+      return;
+    }
+
+    response.json({
+      files: await courseService.listFiles(request.params.courseId)
+    });
+  });
+
+  app.post("/courses/:courseId/files", async (request: Request, response: Response) => {
+    const parsed = addCourseFileSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      response.status(400).json({
+        type: "error",
+        answer: validationErrorAnswer("Invalid course file request body", parsed.error),
+        provider: provider.name,
+        raw: parsed.error.format()
+      });
+      return;
+    }
+
+    const text = textFromCourseFileBody(parsed.data);
+
+    if (text === null) {
+      response.status(400).json({
+        type: "error",
+        answer: "Invalid course file request body: text or contentBase64 is required.",
+        provider: provider.name
+      });
+      return;
+    }
+
+    try {
+      const file = await courseService.addTextFile(request.params.courseId, {
+        originalName: parsed.data.originalName,
+        mimeType: parsed.data.mimeType,
+        text
+      });
+      response.status(201).json({ file });
+    } catch (error) {
+      handleCourseError(error, response, provider.name);
+    }
+  });
+
+  app.get("/courses/:courseId/index-status", async (request: Request, response: Response) => {
+    const course = await courseService.getCourse(request.params.courseId);
+
+    if (!course) {
+      response.status(404).json({
+        type: "error",
+        answer: `Course "${request.params.courseId}" was not found.`,
+        provider: provider.name
+      });
+      return;
+    }
+
+    response.json(await courseService.indexStatus(request.params.courseId));
+  });
+
+  app.post("/courses/:courseId/retrieve", async (request: Request, response: Response) => {
+    const parsed = retrieveSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      response.status(400).json({
+        type: "error",
+        answer: validationErrorAnswer("Invalid retrieval request body", parsed.error),
+        provider: provider.name,
+        raw: parsed.error.format()
+      });
+      return;
+    }
+
+    const course = await courseService.getCourse(request.params.courseId);
+
+    if (!course) {
+      response.status(404).json({
+        type: "error",
+        answer: `Course "${request.params.courseId}" was not found.`,
+        provider: provider.name
+      });
+      return;
+    }
+
+    const chunks = await courseService.retrieve(request.params.courseId, parsed.data);
+    response.json({ chunks });
+  });
+
   app.post("/ask", async (request: Request, response: Response) => {
     const parsed = askSchema.safeParse(request.body);
 
@@ -164,8 +358,9 @@ export function createApp(
     }
 
     try {
-      const tutorResponse = await provider.ask(parsed.data);
-      response.json(tutorResponse);
+      const grounded = await buildGroundedTutorRequest(parsed.data, stateStore.previousTutorState());
+      const tutorResponse = await provider.ask(grounded.request);
+      response.json(applyGroundingMetadata(tutorResponse, grounded));
     } catch (error) {
       response.status(500).json({
         type: "error",
@@ -231,6 +426,8 @@ export function createApp(
         marker: parsed.data.marker,
         courseHint: parsed.data.courseHint,
         nearbyContext: parsed.data.nearbyContext,
+        courseId: undefined,
+        useCourseGrounding: false,
         confidence: parsed.data.confidence ?? 0.8
       });
 
@@ -284,9 +481,11 @@ export function createApp(
     }
 
     try {
-      const tutorResponse = await provider.ask(
-        requestFromDetection(detectedQuestion, stateStore.previousTutorState())
+      const grounded = await buildGroundedTutorRequest(
+        requestFromDetection(detectedQuestion, stateStore.previousTutorState()),
+        stateStore.previousTutorState()
       );
+      const tutorResponse = applyGroundingMetadata(await provider.ask(grounded.request), grounded);
       stateStore.recordResponse(detectedQuestion, tutorResponse);
       response.json({
         sessionId: stateStore.getSession().id,
@@ -333,9 +532,11 @@ export function createApp(
   async function runDetection(input: DetectionInput) {
     const detectedQuestion = stateStore.addDetection(input);
     const previousTutorState = stateStore.previousTutorState();
-    const tutorResponse = await provider.ask(
-      requestFromDetection(detectedQuestion, previousTutorState)
+    const grounded = await buildGroundedTutorRequest(
+      requestFromDetection(detectedQuestion, previousTutorState),
+      previousTutorState
     );
+    const tutorResponse = applyGroundingMetadata(await provider.ask(grounded.request), grounded);
     stateStore.recordResponse(detectedQuestion, tutorResponse);
 
     return {
@@ -345,7 +546,149 @@ export function createApp(
     };
   }
 
+  async function buildGroundedTutorRequest(
+    input: TutorRequest,
+    previousTutorState: TutorRequest["previousTutorState"]
+  ): Promise<{
+    request: TutorRequest;
+    chunks: RetrievedChunk[];
+    groundingStatus: TutorResponse["groundingStatus"];
+    course?: Course;
+  }> {
+    if (!input.useCourseGrounding) {
+      return {
+        request: input,
+        chunks: input.retrievedContext ?? [],
+        groundingStatus: "disabled"
+      };
+    }
+
+    if (input.marker.trim() === "?" && !input.selectedIntent) {
+      return {
+        request: input,
+        chunks: [],
+        groundingStatus: "disabled"
+      };
+    }
+
+    if (!input.courseId) {
+      return {
+        request: { ...input, retrievedContext: [] },
+        chunks: [],
+        groundingStatus: "no_relevant_context"
+      };
+    }
+
+    const course = await courseService.getCourse(input.courseId);
+
+    if (!course) {
+      return {
+        request: { ...input, retrievedContext: [] },
+        chunks: [],
+        groundingStatus: "course_not_found"
+      };
+    }
+
+    const chunks = await courseService.retrieve(input.courseId, {
+      query: buildRetrievalQuery(input, previousTutorState),
+      topK: 5
+    });
+
+    return {
+      request: {
+        ...input,
+        retrievedContext: chunks,
+        previousTutorState
+      },
+      chunks,
+      groundingStatus: chunks.length > 0 ? "used_course_context" : "no_relevant_context",
+      course
+    };
+  }
+
   return app;
+}
+
+function applyGroundingMetadata(
+  response: TutorResponse,
+  grounded: {
+    chunks: RetrievedChunk[];
+    groundingStatus: TutorResponse["groundingStatus"];
+  }
+): TutorResponse {
+  if (response.type !== "tutor_answer") {
+    return response;
+  }
+
+  if (response.groundingStatus && response.sources) {
+    return response;
+  }
+
+  const sources = grounded.chunks.map((chunk) => ({
+    fileId: chunk.fileId,
+    sourceLabel: chunk.sourceLabel,
+    chunkId: chunk.chunkId,
+    pageNumber: chunk.pageNumber
+  }));
+
+  return {
+    ...response,
+    sources: response.sources ?? sources,
+    grounded: response.grounded ?? grounded.groundingStatus === "used_course_context",
+    groundingStatus: response.groundingStatus ?? grounded.groundingStatus
+  };
+}
+
+function buildRetrievalQuery(
+  input: TutorRequest,
+  previousTutorState: TutorRequest["previousTutorState"]
+): string {
+  const previous = (previousTutorState ?? [])
+    .slice(-2)
+    .map((turn) => [turn.regionText, turn.selectedIntent ?? "", turn.answer ?? ""].join(" "))
+    .join(" ");
+
+  return [
+    input.regionText,
+    input.selectedIntent ?? "",
+    input.marker,
+    input.nearbyContext ?? "",
+    input.courseHint ?? "",
+    previous
+  ]
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function textFromCourseFileBody(input: z.infer<typeof addCourseFileSchema>): string | null {
+  if (input.text !== undefined) {
+    return input.text;
+  }
+
+  if (input.contentBase64) {
+    return Buffer.from(input.contentBase64, "base64").toString("utf8");
+  }
+
+  return null;
+}
+
+function handleCourseError(error: unknown, response: Response, providerName: string): void {
+  if (error instanceof CourseNotFoundError) {
+    response.status(404).json({
+      type: "error",
+      answer: error.message,
+      provider: providerName
+    });
+    return;
+  }
+
+  response.status(500).json({
+    type: "error",
+    answer: "Course material operation failed.",
+    provider: providerName,
+    raw: error instanceof Error ? error.message : error
+  });
 }
 
 function validationErrorAnswer(prefix: string, error: ZodError): string {

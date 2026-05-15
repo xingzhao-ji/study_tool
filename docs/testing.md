@@ -14,7 +14,7 @@ npm run smoke
 
 Run this gate before committing source, UI, provider, session, or docs changes.
 
-`npm run smoke` starts the Express app on an ephemeral localhost port and exercises the MVP HTTP flow without requiring a long-running dev server.
+`npm run smoke` starts the Express app on an ephemeral localhost port and exercises the MVP HTTP flow, including the API-first course/RAG path, without requiring a long-running dev server.
 
 ## Provider Tests
 
@@ -42,12 +42,30 @@ curl http://localhost:3000/providers
 curl http://localhost:3000/
 ```
 
+Course/RAG smoke:
+
+```bash
+curl -X POST http://localhost:3000/courses \
+  -H "Content-Type: application/json" \
+  -d '{"name":"CS 132","description":"Parsing notes"}'
+
+curl -X POST http://localhost:3000/courses/<courseId>/files \
+  -H "Content-Type: application/json" \
+  -d '{"originalName":"follow.txt","mimeType":"text/plain","text":"FOLLOW(A) receives FIRST(beta) except epsilon when beta follows A."}'
+
+curl http://localhost:3000/courses/<courseId>/index-status
+
+curl -X POST http://localhost:3000/courses/<courseId>/retrieve \
+  -H "Content-Type: application/json" \
+  -d '{"query":"FOLLOW(A) includes FIRST(B)","topK":5}'
+```
+
 Bare `?` must return intent options:
 
 ```bash
 curl -X POST http://localhost:3000/ask \
   -H "Content-Type: application/json" \
-  -d '{"regionText":"FOLLOW(A) includes FIRST(B)","marker":"?","courseHint":"CS 132 parsing","nearbyContext":"FIRST and FOLLOW sets"}'
+  -d '{"regionText":"FOLLOW(A) includes FIRST(B)","marker":"?","courseHint":"CS 132 parsing","nearbyContext":"FIRST and FOLLOW sets","courseId":"<courseId>","useCourseGrounding":true}'
 ```
 
 Selected intent must return a tutor answer:
@@ -55,7 +73,7 @@ Selected intent must return a tutor answer:
 ```bash
 curl -X POST http://localhost:3000/ask \
   -H "Content-Type: application/json" \
-  -d '{"regionText":"FOLLOW(A) includes FIRST(B)","marker":"?","selectedIntent":"Explain when FOLLOW includes FIRST","courseHint":"CS 132 parsing","nearbyContext":"FIRST and FOLLOW sets"}'
+  -d '{"regionText":"FOLLOW(A) includes FIRST(B)","marker":"?","selectedIntent":"Explain when FOLLOW includes FIRST","courseHint":"CS 132 parsing","nearbyContext":"FIRST and FOLLOW sets","courseId":"<courseId>","useCourseGrounding":true}'
 ```
 
 Follow-up checks should identify a concrete issue:

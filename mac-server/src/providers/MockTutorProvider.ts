@@ -38,12 +38,14 @@ export class MockTutorProvider implements TutorProvider {
       };
     }
 
-    return {
+    const response: TutorResponse = {
       type: "tutor_answer",
       answer: this.answerFor(request, marker),
       confidence: this.confidenceFor(marker, request.selectedIntent),
       provider: this.name
     };
+
+    return this.applyCourseGrounding(response, request);
   }
 
   private answerFor(request: TutorRequest, marker: string): string {
@@ -275,6 +277,59 @@ export class MockTutorProvider implements TutorProvider {
       .join(" ")
       .toLowerCase();
   }
+
+  private applyCourseGrounding(response: TutorResponse, request: TutorRequest): TutorResponse {
+    if (!request.useCourseGrounding) {
+      return {
+        ...response,
+        groundingStatus: "disabled"
+      };
+    }
+
+    const chunks = request.retrievedContext ?? [];
+
+    if (chunks.length === 0) {
+      return {
+        ...response,
+        answer: [
+          "I do not see enough support for this in the uploaded course material.",
+          `Outside-course-material explanation: ${response.answer ?? ""}`
+        ].join(" "),
+        grounded: false,
+        groundingStatus: "no_relevant_context",
+        sources: []
+      };
+    }
+
+    const first = chunks[0];
+    const sourceSummary = compactSourceText(first.text);
+
+    return {
+      ...response,
+      answer: [
+        `From uploaded course material (${first.sourceLabel}): ${sourceSummary}`,
+        `Applied to your boxed work: ${response.answer ?? ""}`
+      ].join("\n\n"),
+      grounded: true,
+      groundingStatus: "used_course_context",
+      sources: chunks.map((chunk) => ({
+        fileId: chunk.fileId,
+        sourceLabel: chunk.sourceLabel,
+        chunkId: chunk.chunkId,
+        pageNumber: chunk.pageNumber
+      }))
+    };
+  }
+}
+
+function compactSourceText(text: string): string {
+  const singleLine = text.replace(/\s+/g, " ").trim();
+
+  if (singleLine.length <= 260) {
+    return singleLine;
+  }
+
+  return `${singleLine.slice(0, 257)}...`;
 }
 
 function parseCoefficient(value: string): number {

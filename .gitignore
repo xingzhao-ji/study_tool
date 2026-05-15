@@ -14,15 +14,25 @@ coverage/
 .tmp/
 
 # Private study data and captures
+data/
 data/frames/
 data/logs/
 data/sessions/
+data/course-files/
+data/course-index/
+data/extracted-text/
+data/vector-store/
+data/uploads/
+data/ocr/
 data/local-study-data/
 screenshots/
 captured-frames/
 captured_frames/
 ocr-logs/
 ocr_logs/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
 *.ocr.log
 *.frame.json
 *.session.json

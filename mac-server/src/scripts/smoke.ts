@@ -1,14 +1,21 @@
 import assert from "node:assert/strict";
+import { mkdtemp, rm } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
+import os from "node:os";
+import path from "node:path";
 import { createApp } from "../server.js";
 import { MockTutorProvider } from "../providers/MockTutorProvider.js";
 import { InMemoryTutorStateStore } from "../session/TutorStateStore.js";
+import { LocalCourseService } from "../rag/CourseService.js";
 
 type LogFn = (line: string) => void;
 
 export async function runSmoke(log: LogFn = console.log): Promise<void> {
-  const app = createApp(new MockTutorProvider(), new InMemoryTutorStateStore("smoke-session"));
+  const courseRoot = await mkdtemp(path.join(os.tmpdir(), "study-tool-smoke-rag-"));
+  const app = createApp(new MockTutorProvider(), new InMemoryTutorStateStore("smoke-session"), {
+    courseService: new LocalCourseService({ rootDir: courseRoot })
+  });
   const server = await listen(app);
   const address = server.address() as AddressInfo;
   const baseUrl = `http://127.0.0.1:${address.port}`;
@@ -28,13 +35,63 @@ export async function runSmoke(log: LogFn = console.log): Promise<void> {
     assert.ok(Array.isArray(providers.providers));
     log("GET /providers -> provider list");
 
+    const course = await jsonRequest(baseUrl, "POST /courses", "/courses", {
+      method: "POST",
+      body: {
+        name: "Smoke CS 132",
+        description: "Local RAG smoke fixture"
+      },
+      expectedStatus: 201
+    });
+    const courseId = course.course.id;
+    log("POST /courses -> course created");
+
+    const uploaded = await jsonRequest(baseUrl, "POST /courses/:id/files", `/courses/${courseId}/files`, {
+      method: "POST",
+      body: {
+        originalName: "follow-smoke.txt",
+        mimeType: "text/plain",
+        text:
+          "In this course, FOLLOW(A) receives FIRST(beta) when A is followed by beta in a production. " +
+          "Add all terminals in FIRST(beta) except epsilon. If beta is nullable, FOLLOW of the left-hand side may also be added."
+      },
+      expectedStatus: 201
+    });
+    assert.equal(uploaded.file.status, "indexed");
+    log("POST /courses/:id/files -> indexed text fixture");
+
+    const courses = await jsonRequest(baseUrl, "GET /courses", "/courses");
+    assert.ok(courses.courses.some((candidate: { id: string }) => candidate.id === courseId));
+    log("GET /courses -> includes course");
+
+    const indexStatus = await jsonRequest(
+      baseUrl,
+      "GET /courses/:id/index-status",
+      `/courses/${courseId}/index-status`
+    );
+    assert.equal(indexStatus.indexedFiles, 1);
+    assert.equal(indexStatus.chunkCount > 0, true);
+    log("GET /courses/:id/index-status -> indexed");
+
+    const retrieval = await jsonRequest(baseUrl, "POST /courses/:id/retrieve", `/courses/${courseId}/retrieve`, {
+      method: "POST",
+      body: {
+        query: "FOLLOW(A) includes FIRST(B)",
+        topK: 5
+      }
+    });
+    assert.match(retrieval.chunks[0].text, /except epsilon/);
+    log("POST /courses/:id/retrieve -> relevant chunk");
+
     const intentOptions = await jsonRequest(baseUrl, "POST /ask ?", "/ask", {
       method: "POST",
       body: {
         regionText: "FOLLOW(A) includes FIRST(B)",
         marker: "?",
         courseHint: "CS 132 parsing",
-        nearbyContext: "FIRST and FOLLOW sets"
+        nearbyContext: "FIRST and FOLLOW sets",
+        courseId,
+        useCourseGrounding: true
       }
     });
     assert.equal(intentOptions.type, "intent_options");
@@ -48,11 +105,15 @@ export async function runSmoke(log: LogFn = console.log): Promise<void> {
         marker: "?",
         selectedIntent: "Explain when FOLLOW includes FIRST",
         courseHint: "CS 132 parsing",
-        nearbyContext: "FIRST and FOLLOW sets"
+        nearbyContext: "FIRST and FOLLOW sets",
+        courseId,
+        useCourseGrounding: true
       }
     });
     assert.equal(selectedIntent.type, "tutor_answer");
-    log("POST /ask selected intent -> tutor_answer");
+    assert.equal(selectedIntent.groundingStatus, "used_course_context");
+    assert.equal(selectedIntent.sources[0].fileId, uploaded.file.id);
+    log("POST /ask selected intent -> grounded tutor_answer");
 
     const followCheck = await jsonRequest(baseUrl, "POST /ask check?", "/ask", {
       method: "POST",
@@ -141,6 +202,7 @@ export async function runSmoke(log: LogFn = console.log): Promise<void> {
     log("Smoke test passed");
   } finally {
     await close(server);
+    await rm(courseRoot, { recursive: true, force: true });
   }
 }
 

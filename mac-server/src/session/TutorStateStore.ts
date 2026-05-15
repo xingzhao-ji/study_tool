@@ -8,6 +8,8 @@ export interface DetectedQuestion {
   selectedIntent?: string | null;
   courseHint?: string;
   nearbyContext?: string;
+  courseId?: string;
+  useCourseGrounding?: boolean;
   confidence: number;
   createdAt: string;
 }
@@ -21,6 +23,11 @@ export interface TutorSessionTurn extends TutorTurn {
   type: TutorResponse["type"];
   options?: string[];
   confidence?: number;
+  courseId?: string;
+  useCourseGrounding?: boolean;
+  sources?: TutorResponse["sources"];
+  grounded?: TutorResponse["grounded"];
+  groundingStatus?: TutorResponse["groundingStatus"];
   createdAt: string;
 }
 
@@ -41,6 +48,8 @@ export interface DetectionInput {
   marker: string;
   courseHint?: string;
   nearbyContext?: string;
+  courseId?: string;
+  useCourseGrounding?: boolean;
   confidence?: number;
 }
 
@@ -71,6 +80,8 @@ export class InMemoryTutorStateStore {
       marker: input.marker,
       courseHint: input.courseHint,
       nearbyContext: input.nearbyContext,
+      courseId: input.courseId,
+      useCourseGrounding: input.useCourseGrounding,
       confidence: input.confidence ?? 1,
       createdAt: new Date().toISOString()
     };
@@ -94,11 +105,16 @@ export class InMemoryTutorStateStore {
       selectedIntent: detectedQuestion.selectedIntent,
       courseHint: detectedQuestion.courseHint,
       nearbyContext: detectedQuestion.nearbyContext,
+      courseId: detectedQuestion.courseId,
+      useCourseGrounding: detectedQuestion.useCourseGrounding,
       provider: tutorResponse.provider,
       answer: tutorResponse.answer,
       type: tutorResponse.type,
       options: tutorResponse.options,
       confidence: tutorResponse.confidence,
+      sources: tutorResponse.sources,
+      grounded: tutorResponse.grounded,
+      groundingStatus: tutorResponse.groundingStatus,
       createdAt: new Date().toISOString()
     };
 
@@ -126,7 +142,12 @@ export class InMemoryTutorStateStore {
       regionText: turn.regionText,
       marker: turn.marker,
       selectedIntent: turn.selectedIntent,
-      answer: turn.answer
+      answer: turn.answer,
+      courseId: turn.courseId,
+      useCourseGrounding: turn.useCourseGrounding,
+      sources: turn.sources,
+      grounded: turn.grounded,
+      groundingStatus: turn.groundingStatus
     }));
   }
 
@@ -177,7 +198,10 @@ export class InMemoryTutorStateStore {
         answer: turn.answer,
         options: turn.options,
         confidence: turn.confidence,
-        provider: turn.provider
+        provider: turn.provider,
+        sources: turn.sources,
+        grounded: turn.grounded,
+        groundingStatus: turn.groundingStatus
       }
     };
   }
@@ -193,6 +217,8 @@ export function requestFromDetection(
     selectedIntent: detectedQuestion.selectedIntent,
     courseHint: detectedQuestion.courseHint,
     nearbyContext: detectedQuestion.nearbyContext,
+    courseId: detectedQuestion.courseId,
+    useCourseGrounding: detectedQuestion.useCourseGrounding,
     previousTutorState
   };
 }

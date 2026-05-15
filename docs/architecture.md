@@ -9,6 +9,7 @@ Goodnotes Companion Tutor is currently a local Mac web app for simulating the fu
 - `mac-server/public/` contains the browser companion UI served at `GET /`.
 - `mac-server/src/session/` stores the current in-memory tutor session and formats Markdown export.
 - `mac-server/src/providers/` contains the default mock tutor and the opt-in local Codex CLI provider.
+- `mac-server/src/rag/` contains the local course service, data model, extraction, chunking, and lexical retrieval.
 - `mac-server/src/frame/` accepts manual frame uploads and saves bytes only when `SAVE_FRAMES=true`.
 - `mac-server/src/security/` decides when pairing is required.
 
@@ -23,6 +24,27 @@ Goodnotes Companion Tutor is currently a local Mac web app for simulating the fu
 7. `GET /latest`, `GET /session`, and `GET /session.md` expose the current in-memory state.
 
 The non-negotiable rule is enforced by provider behavior and tests: a bare `?` returns intent options first and does not answer directly.
+
+## Course Material RAG
+
+Courses are managed through API routes in `mac-server/src/server.ts` and backed by `LocalCourseService`.
+
+Current endpoints:
+
+- `GET /courses`
+- `POST /courses`
+- `GET /courses/:courseId`
+- `DELETE /courses/:courseId`
+- `POST /courses/:courseId/files`
+- `GET /courses/:courseId/files`
+- `GET /courses/:courseId/index-status`
+- `POST /courses/:courseId/retrieve`
+
+The service stores uploaded originals under ignored `data/course-files/`, extracted text under `data/extracted-text/`, and course/file/chunk metadata under `data/course-index/`. Retrieval is local lexical scoring over chunks scoped by `courseId`.
+
+When `/ask`, `/simulate-detection`, or `/select-intent` includes `courseId` and `useCourseGrounding: true`, the server retrieves relevant chunks and adds them to `TutorRequest.retrievedContext`. `TutorResponse` can include `sources`, `grounded`, and `groundingStatus`.
+
+The first implementation is API-first. The browser UI does not yet expose course creation or upload controls.
 
 ## Providers
 

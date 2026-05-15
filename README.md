@@ -1,6 +1,6 @@
 # Goodnotes Companion Tutor
 
-Goodnotes Companion Tutor is a private personal-use AI study companion for tutoring around handwritten Goodnotes work. The current build is Mac-only and provides a browser companion UI, mock tutor loop, manual frame upload path, in-memory session history, and an opt-in local Codex CLI provider without screen capture, OCR, image processing, iOS, ReplayKit, or PiP.
+Goodnotes Companion Tutor is a private personal-use AI study companion for tutoring around handwritten Goodnotes work. The current build is Mac-only and provides a browser companion UI, mock tutor loop, local course-material upload/retrieval API, manual frame upload path, in-memory session history, and an opt-in local Codex CLI provider without screen capture, OCR, image processing, iOS, ReplayKit, or PiP.
 
 ## Current Milestone
 
@@ -14,6 +14,7 @@ This repository currently implements the core Mac/web pieces from Milestones 0 t
 - `GET /providers` for provider status and capability discovery.
 - A local browser companion UI for entering boxed text, selecting markers, choosing intent options, reusing prior turns, checking follow-up work, exporting Markdown notes, and viewing tutor history.
 - A connection/status card for iPhone Safari and desktop browser use.
+- A local course-material API for creating courses, uploading text-like files, chunking extracted text, lexical retrieval, and source-aware grounded tutor answers.
 - A safe manual screenshot/crop upload path that requires manually corrected text until OCR exists.
 - An opt-in `codex_private_local` provider that queues local `codex exec` calls and returns structured errors.
 - A user-triggered Codex status diagnostic that runs only `which codex` and `codex login status`, with token-shaped output redacted before it reaches the UI.
@@ -27,6 +28,7 @@ This repository currently implements the core Mac/web pieces from Milestones 0 t
 - Selected intent returns a tutor answer.
 - `check?` and `✓?` use the same check behavior.
 - In-memory latest detection, latest answer, and turn history.
+- Local course creation, text-like course file upload, local extraction, chunking, lexical retrieval, index status, and grounded `/ask` responses with source labels.
 - Manual screenshot/crop upload endpoint that requires manual text until OCR exists.
 - LAN/iPhone Safari mode with pairing-token protection.
 - Opt-in `codex_private_local` provider with fake-runner tests, timeout handling, and max concurrency 1.
@@ -36,6 +38,8 @@ This repository currently implements the core Mac/web pieces from Milestones 0 t
 - No live Goodnotes integration.
 - No screen capture, ReplayKit stream, PiP companion, native iOS app, OCR, handwriting recognition, or boxed-region detection.
 - No durable session persistence. Restarting the server clears session state.
+- No course upload controls in the web UI yet; course/RAG is currently API-first.
+- No local PDF text extraction package yet. PDF uploads are marked `needs_ocr` until OCR or a local PDF extractor is added.
 - Manual frame upload does not detect text by itself.
 - Real Codex CLI behavior depends on a working local `codex` install and login; tests never call real Codex.
 
@@ -116,12 +120,16 @@ If `PAIRING_TOKEN` is missing in LAN mode, the server generates an in-memory tok
 7. `npm run simulate`
 8. `npm run dev`
 9. Open `http://localhost:3000`
-10. Submit a simulated region with marker `?`.
-11. Select an intent option.
-12. Submit follow-up work with marker `check?`.
-13. For iPhone Safari, restart with `HOST=0.0.0.0 PORT=3000 npm run dev`.
-14. Run `ipconfig getifaddr en0`.
-15. Open `http://<MAC_LAN_IP>:3000` on the iPhone and enter the pairing token printed by the server or set in `PAIRING_TOKEN`.
+10. Create a course with `POST /courses`.
+11. Upload a small `.txt` or `.md` course material file with `POST /courses/<id>/files`.
+12. Retrieve a query from the course material with `POST /courses/<id>/retrieve`.
+13. Submit a simulated region with marker `?`.
+14. Select an intent option.
+15. Enable course grounding in the request payload with `courseId` and `useCourseGrounding: true`.
+16. Submit follow-up work with marker `check?`.
+17. For iPhone Safari, restart with `HOST=0.0.0.0 PORT=3000 npm run dev`.
+18. Run `ipconfig getifaddr en0`.
+19. Open `http://<MAC_LAN_IP>:3000` on the iPhone and enter the pairing token printed by the server or set in `PAIRING_TOKEN`.
 
 The mock provider is used by default. You can select the opt-in local Codex provider with:
 
@@ -203,7 +211,7 @@ Token-shaped status text is redacted before the response is returned to the brow
 
 ## Companion UI
 
-The browser UI is served by the Mac server and uses the same local endpoints:
+The browser UI is served by the Mac server and currently uses these local endpoints:
 
 - `GET /health`
 - `GET /providers`
@@ -218,6 +226,17 @@ The browser UI is served by the Mac server and uses the same local endpoints:
 - `POST /undo-last`
 - `POST /frame`
 
+Course material endpoints are implemented API-first and are not wired into the UI yet:
+
+- `GET /courses`
+- `POST /courses`
+- `GET /courses/:courseId`
+- `DELETE /courses/:courseId`
+- `POST /courses/:courseId/files`
+- `GET /courses/:courseId/files`
+- `GET /courses/:courseId/index-status`
+- `POST /courses/:courseId/retrieve`
+
 Tutor turns are stored only in the Mac server's in-memory session. The browser can copy or download the current in-memory session as Markdown notes on request. It does not use browser storage, save screenshots by default, capture frames, run OCR, or read Goodnotes.
 
 Daily study controls:
@@ -230,6 +249,70 @@ Daily study controls:
 - `Undo last` removes the latest tutor turn and restores the previous answer when available.
 
 The Connection card includes a `Check Codex` button. It performs only the allowed setup checks `which codex` and `codex login status`, then reports whether the local CLI appears ready. It does not inspect auth files.
+
+## Course Material And Local RAG
+
+Course material is stored locally under ignored `data/` paths at the repository root. The server never sends entire textbooks or uploaded files to a tutor provider. It stores the upload, extracts local text when supported, chunks it, retrieves the top relevant chunks, and sends only those chunks in the tutor request.
+
+Supported first-pass file types:
+
+- `.txt`, `.md`, `.markdown`
+- `.json` by collecting string values where possible
+- `.html`, `.htm` with simple tag stripping
+- `.pdf` is accepted but marked `needs_ocr` because this build has no local PDF text extractor yet
+
+Create a course:
+
+```bash
+curl -X POST http://localhost:3000/courses \
+  -H "Content-Type: application/json" \
+  -d '{"name":"CS 132","description":"Parsing notes"}'
+```
+
+Upload text-like material:
+
+```bash
+curl -X POST http://localhost:3000/courses/<courseId>/files \
+  -H "Content-Type: application/json" \
+  -d '{"originalName":"lecture-follow.txt","mimeType":"text/plain","text":"FOLLOW(A) receives FIRST(beta) except epsilon when beta follows A."}'
+```
+
+Check index status and retrieve:
+
+```bash
+curl http://localhost:3000/courses/<courseId>/index-status
+
+curl -X POST http://localhost:3000/courses/<courseId>/retrieve \
+  -H "Content-Type: application/json" \
+  -d '{"query":"FOLLOW(A) includes FIRST(B)","topK":5}'
+```
+
+Ask with course grounding:
+
+```bash
+curl -X POST http://localhost:3000/ask \
+  -H "Content-Type: application/json" \
+  -d '{"regionText":"FOLLOW(A) includes FIRST(B)","marker":"?","selectedIntent":"Explain when FOLLOW includes FIRST","courseHint":"CS 132 parsing","nearbyContext":"FIRST and FOLLOW sets","courseId":"<courseId>","useCourseGrounding":true}'
+```
+
+If the marker is exactly `?` and `selectedIntent` is missing, `/ask` still returns intent options first and does not answer directly, even with course grounding enabled.
+
+Local storage paths:
+
+- `data/course-files/` stores uploaded originals.
+- `data/extracted-text/` stores extracted text blocks.
+- `data/course-index/` stores course metadata, file metadata, and chunk metadata.
+- `data/vector-store/`, `data/uploads/`, and `data/ocr/` are reserved ignored paths for later work.
+
+Delete a course and its local course files:
+
+```bash
+curl -X DELETE http://localhost:3000/courses/<courseId>
+```
+
+To delete all local course data manually, stop the server and remove `data/course-files/`, `data/extracted-text/`, and `data/course-index/`. Do not commit anything under `data/`.
+
+Designed for large local files, but first implementation has only been tested on small/medium fixtures. Current JSON upload bodies are buffered by Express, so true gigabyte-scale streaming upload is not implemented yet.
 
 ## Session API
 
@@ -296,14 +379,14 @@ When the marker is exactly `?` and no `selectedIntent` is provided, the mock tut
 ## Safety And Privacy Notes
 
 - This milestone does not read Goodnotes, capture the screen, process images, run OCR, or invoke Codex unless `TUTOR_PROVIDER=codex_private_local` is explicitly selected.
-- The Milestone 3 UI stores tutor turns only in browser memory for the current open page.
 - Session state is currently in memory only on the Mac server. Restarting the server clears it.
+- Uploaded course material and extracted/indexed text are local files under ignored `data/` directories.
 - Markdown export is generated on request from in-memory session state. The server does not write session notes to disk.
 - LAN mode requires a pairing token for API routes. Static UI files are served so the browser can ask for the token, but tutor/session endpoints require the token.
 - Frame uploads are processed in memory by default. `SAVE_FRAMES=true` is opt-in and stores files only under ignored `data/frames/`.
 - The Codex provider adapter does not read `~/.codex`, `~/.openclaw`, environment auth files, browser profiles, or system credential stores. Runtime Codex calls are explicit opt-in via `TUTOR_PROVIDER=codex_private_local`.
-- Do not commit secrets, authentication files, screenshots, captured frames, OCR logs, local study data, or private session logs.
-- `.env`, `auth.json`, `.codex`, `.openclaw`, captured frame directories, log directories, screenshots, and local study data paths are ignored by Git.
+- Do not commit secrets, authentication files, screenshots, captured frames, OCR logs, uploaded course files, extracted course text, local indexes, local study data, or private session logs.
+- `.env`, `auth.json`, `.codex`, `.openclaw`, `data/`, sqlite files, captured frame directories, log directories, screenshots, and local study data paths are ignored by Git.
 - Future providers must not inspect `~/.codex`, `~/.openclaw`, browser profiles, system credential stores, or private notes unless explicitly approved.
 
 ## Provider Status
@@ -318,27 +401,33 @@ When the marker is exactly `?` and no `selectedIntent` is provided, the mock tut
 - If LAN requests fail with pairing errors, enter the exact `PAIRING_TOKEN` value or the generated token printed in the server terminal. A bad token is shown in the UI as rejected.
 - If `codex_private_local` returns an error, run `curl http://localhost:3000/codex/status` and keep using the `mock` provider until the local CLI and login status are ready.
 - If `/ask` returns `400`, make sure the JSON body includes non-empty `regionText` and `marker`.
+- If `/courses/:courseId/files` marks a PDF as `needs_ocr`, use a text/Markdown export for now or add a local PDF extractor in a future change.
 - If `/frame` returns `manual_text_required`, that is expected until OCR exists. Fill the boxed text and marker manually.
 
 ## Known Limitations
 
 - The tutor can be useful for MVP testing, but the mock provider is rule-based and intentionally limited.
+- Local retrieval is lexical/BM25-like, not embeddings. It works for exact course terms and small fixtures but is not a semantic search engine yet.
+- Course upload is API-first and currently buffered as JSON; the web UI upload panel and true streaming upload are still pending.
 - Session state is single-process memory, not a database.
 - Pairing protects LAN API routes, but this is still a personal-use local/LAN tool, not a hardened multi-user service.
 - Saved frames are opt-in with `SAVE_FRAMES=true` and should not be committed.
 
 ## Next Steps
 
-1. Keep hardening the web/iPhone Safari companion loop.
-2. Improve follow-up checking quality for more courses and mistake types.
-3. Exercise the opt-in Codex provider on a real local setup without making it default.
-4. Add OCR and vision interfaces as tested stubs before attempting real handwriting recognition.
-5. Use the manual frame path as the fallback for any ReplayKit or native iOS experiments.
+1. Add course selector, upload, index status, retrieval preview, and source display to the web/iPhone UI.
+2. Add local PDF text extraction when a reliable package is available.
+3. Keep hardening the web/iPhone Safari companion loop.
+4. Improve follow-up checking quality for more courses and mistake types.
+5. Exercise the opt-in Codex provider on a real local setup without making it default.
+6. Add OCR and vision interfaces as tested stubs before attempting real handwriting recognition.
+7. Use the manual frame path as the fallback for any ReplayKit or native iOS experiments.
 
 ## More Docs
 
 - [Architecture](docs/architecture.md)
 - [Testing](docs/testing.md)
+- [RAG workflow](docs/rag.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [iOS plan](docs/ios-plan.md)
 - [ReplayKit plan](docs/replaykit-plan.md)

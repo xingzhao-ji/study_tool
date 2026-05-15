@@ -83,6 +83,28 @@ The status check runs only `which codex` and `codex login status`. Provider test
 
 `manual_text_required` is expected when `/frame` receives an image without `regionText` and `marker`. OCR is not implemented yet. Enter the boxed text and marker manually, then upload with current text or use `POST /simulate-detection`.
 
+## Course Retrieval Returns No Chunks
+
+Check that the course has indexed files:
+
+```bash
+curl http://localhost:3000/courses/<courseId>/index-status
+```
+
+If `indexedFiles` is `0`, inspect the file list:
+
+```bash
+curl http://localhost:3000/courses/<courseId>/files
+```
+
+PDF files currently become `needs_ocr`; use a `.txt` or `.md` export for the MVP. Retrieval is lexical, so use exact course terms from the notes when testing.
+
+## Grounded Answer Says There Is Not Enough Support
+
+This is expected when no relevant chunks are retrieved. Confirm the `/ask` payload includes both `courseId` and `useCourseGrounding: true`, then test the same query with `POST /courses/<courseId>/retrieve`.
+
+Bare `?` still returns intent options first. Add `selectedIntent` before expecting a grounded answer.
+
 ## Session Disappeared
 
 Session state is in memory only. Restarting the server clears detections, turns, latest answer, and Markdown export state.
