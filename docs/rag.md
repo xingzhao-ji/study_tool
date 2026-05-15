@@ -15,9 +15,9 @@ Goodnotes Companion Tutor now has a local retrieval path for course material. It
 
 The server never sends an entire textbook or uploaded course file to a tutor provider.
 
-Delete an uploaded file with `DELETE /courses/:courseId/files/:fileId`. This removes the stored original, extracted text record, and indexed chunks for that file.
+Delete an uploaded file from the web UI or with `DELETE /courses/:courseId/files/:fileId`. This removes the stored original, extracted text record, and indexed chunks for that file.
 
-Rebuild a course index with `POST /courses/:courseId/reindex`. This rereads locally stored files and replaces the course's chunks. It is useful after extraction code changes or manual fixture edits.
+Rebuild a course index from the web UI or with `POST /courses/:courseId/reindex`. This rereads locally stored files and replaces the course's chunks. It is useful after extraction code changes or manual fixture edits.
 
 ## Grounding Policy
 

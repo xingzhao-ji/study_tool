@@ -287,6 +287,8 @@ curl -X POST http://localhost:3000/courses/<courseId>/files \
   --data-binary @lecture-follow.txt
 ```
 
+In the Course Material panel, uploaded files show their status and size. Use `Delete` on a file to remove its stored original, extracted text, and chunks. Use `Reindex course` to rebuild chunks from the currently stored local files.
+
 Check index status and retrieve:
 
 ```bash

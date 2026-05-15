@@ -15,6 +15,7 @@ const newCourseDescription = document.querySelector("#newCourseDescription");
 const createCourseButton = document.querySelector("#createCourseButton");
 const courseUploadInput = document.querySelector("#courseUploadInput");
 const uploadCourseFilesButton = document.querySelector("#uploadCourseFilesButton");
+const reindexCourseButton = document.querySelector("#reindexCourseButton");
 const courseFiles = document.querySelector("#courseFiles");
 const retrievalQuery = document.querySelector("#retrievalQuery");
 const retrievalTopK = document.querySelector("#retrievalTopK");
@@ -346,7 +347,16 @@ function renderCourseFiles(files) {
     const status = document.createElement("span");
     status.textContent = `${file.status} · ${formatBytes(file.sizeBytes)}`;
 
-    item.append(name, status);
+    const actions = document.createElement("div");
+    actions.className = "file-actions";
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.textContent = "Delete";
+    deleteButton.addEventListener("click", () => deleteCourseFile(file.id));
+    actions.append(deleteButton);
+
+    item.append(name, status, actions);
 
     if (file.error) {
       const error = document.createElement("small");
@@ -448,6 +458,70 @@ async function uploadCourseFiles() {
     renderError(error.message || "The local tutor server could not upload course files.");
   } finally {
     uploadCourseFilesButton.disabled = false;
+  }
+}
+
+async function reindexActiveCourse() {
+  if (pairingRequired && !paired) {
+    renderError("Enter the pairing token before reindexing course files.");
+    return;
+  }
+
+  if (!activeCourseId) {
+    activeCourseStatus.textContent = "Select a course";
+    return;
+  }
+
+  reindexCourseButton.disabled = true;
+  activeCourseStatus.textContent = "Reindexing";
+
+  try {
+    const response = await apiFetch(`/courses/${activeCourseId}/reindex`, { method: "POST" });
+    const body = await response.json();
+
+    if (!response.ok) {
+      throw new Error(body.answer ?? "reindex failed");
+    }
+
+    activeCourseStatus.textContent = `${body.indexedFiles}/${body.totalFiles} indexed · ${body.chunkCount} chunks`;
+    await loadActiveCourseDetails();
+  } catch (error) {
+    activeCourseStatus.textContent = "Reindex failed";
+    renderError(error.message || "The local tutor server could not reindex this course.");
+  } finally {
+    reindexCourseButton.disabled = false;
+  }
+}
+
+async function deleteCourseFile(fileId) {
+  if (pairingRequired && !paired) {
+    renderError("Enter the pairing token before deleting course files.");
+    return;
+  }
+
+  if (!activeCourseId || !fileId) {
+    activeCourseStatus.textContent = "Select a course";
+    return;
+  }
+
+  if (!window.confirm("Delete this local course file and its indexed chunks?")) {
+    return;
+  }
+
+  activeCourseStatus.textContent = "Deleting file";
+
+  try {
+    const response = await apiFetch(`/courses/${activeCourseId}/files/${fileId}`, { method: "DELETE" });
+    const body = await response.json();
+
+    if (!response.ok) {
+      throw new Error(body.answer ?? "delete failed");
+    }
+
+    await loadActiveCourseDetails();
+  } catch (error) {
+    activeCourseStatus.textContent = "Delete failed";
+    renderError(error.message || "The local tutor server could not delete this course file.");
   }
 }
 
@@ -1117,6 +1191,7 @@ resetFormButton.addEventListener("click", resetForm);
 
 createCourseForm.addEventListener("submit", createCourse);
 uploadCourseFilesButton.addEventListener("click", uploadCourseFiles);
+reindexCourseButton.addEventListener("click", reindexActiveCourse);
 retrievalButton.addEventListener("click", previewRetrieval);
 courseSelect.addEventListener("change", async () => {
   activeCourseId = courseSelect.value;

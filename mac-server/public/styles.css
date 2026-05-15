@@ -321,6 +321,17 @@ button:focus-visible {
   font-size: 0.86rem;
 }
 
+.file-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.file-actions button {
+  min-height: 34px;
+  padding: 7px 10px;
+}
+
 .status-indexed span:nth-child(2) {
   color: var(--accent-strong);
 }
