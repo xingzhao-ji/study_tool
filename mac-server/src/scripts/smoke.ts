@@ -60,6 +60,18 @@ export async function runSmoke(log: LogFn = console.log): Promise<void> {
     assert.equal(uploaded.file.status, "indexed");
     log("POST /courses/:id/files -> indexed text fixture");
 
+    const streamed = await jsonRequest(baseUrl, "POST /courses/:id/files stream", `/courses/${courseId}/files`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain",
+        "x-file-name": "follow-stream.txt"
+      },
+      rawBody: "A streamed local upload says FOLLOW(A) receives FIRST(beta) except epsilon.",
+      expectedStatus: 201
+    });
+    assert.equal(streamed.file.status, "indexed");
+    log("POST /courses/:id/files text/plain -> streamed fixture");
+
     const courses = await jsonRequest(baseUrl, "GET /courses", "/courses");
     assert.ok(courses.courses.some((candidate: { id: string }) => candidate.id === courseId));
     log("GET /courses -> includes course");
@@ -69,7 +81,7 @@ export async function runSmoke(log: LogFn = console.log): Promise<void> {
       "GET /courses/:id/index-status",
       `/courses/${courseId}/index-status`
     );
-    assert.equal(indexStatus.indexedFiles, 1);
+    assert.equal(indexStatus.indexedFiles, 2);
     assert.equal(indexStatus.chunkCount > 0, true);
     log("GET /courses/:id/index-status -> indexed");
 
@@ -236,12 +248,18 @@ async function jsonRequest(
   baseUrl: string,
   label: string,
   path: string,
-  options: { method?: string; body?: unknown; expectedStatus?: number } = {}
+  options: {
+    method?: string;
+    body?: unknown;
+    rawBody?: string;
+    headers?: Record<string, string>;
+    expectedStatus?: number;
+  } = {}
 ): Promise<Record<string, any>> {
   const response = await fetch(`${baseUrl}${path}`, {
     method: options.method ?? "GET",
-    headers: options.body ? { "Content-Type": "application/json" } : undefined,
-    body: options.body ? JSON.stringify(options.body) : undefined
+    headers: options.headers ?? (options.body ? { "Content-Type": "application/json" } : undefined),
+    body: options.rawBody ?? (options.body ? JSON.stringify(options.body) : undefined)
   });
   const body = await response.json();
   assert.equal(

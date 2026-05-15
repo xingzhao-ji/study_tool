@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { createWriteStream } from "node:fs";
 import path from "node:path";
 import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import type { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import type { Course, CourseChunk, CourseFile, CourseIndexStatus, RetrievedChunk } from "./types.js";
 
 export interface CreateCourseInput {
@@ -12,6 +15,12 @@ export interface AddTextFileInput {
   originalName: string;
   mimeType?: string;
   text: string;
+}
+
+export interface AddFileStreamInput {
+  originalName: string;
+  mimeType?: string;
+  stream: Readable;
 }
 
 export interface RetrieveInput {
@@ -26,6 +35,7 @@ export interface CourseService {
   deleteCourse(courseId: string): Promise<boolean>;
   listFiles(courseId: string): Promise<CourseFile[]>;
   addTextFile(courseId: string, input: AddTextFileInput): Promise<CourseFile>;
+  addFileStream(courseId: string, input: AddFileStreamInput): Promise<CourseFile>;
   deleteFile(courseId: string, fileId: string): Promise<boolean>;
   reindexCourse(courseId: string): Promise<CourseIndexStatus>;
   indexStatus(courseId: string): Promise<CourseIndexStatus>;
@@ -167,6 +177,78 @@ export class LocalCourseService implements CourseService {
         const chunks = chunkExtractedBlocks({ courseId, file, blocks });
         state.chunks = state.chunks.filter((chunk) => chunk.fileId !== file.id);
         state.chunks.push(...chunks);
+        await this.writeExtractedBlocks(courseId, file.id, blocks);
+        file = this.updateFile(state, file.id, {
+          status: "indexed",
+          error: undefined,
+          updatedAt: new Date().toISOString()
+        });
+      }
+    } catch (error) {
+      file = this.updateFile(state, file.id, {
+        status: "failed",
+        error: error instanceof Error ? error.message : String(error),
+        updatedAt: new Date().toISOString()
+      });
+    }
+
+    course.updatedAt = new Date().toISOString();
+    await this.saveState();
+    return file;
+  }
+
+  async addFileStream(courseId: string, input: AddFileStreamInput): Promise<CourseFile> {
+    const state = await this.loadState();
+    const course = state.courses.find((candidate) => candidate.id === courseId);
+
+    if (!course) {
+      throw new CourseNotFoundError(courseId);
+    }
+
+    const now = new Date().toISOString();
+    const fileId = randomUUID();
+    const mimeType = input.mimeType || mimeTypeForName(input.originalName);
+    const storedPath = path.join(this.courseFilesDir, courseId, `${fileId}-${safeFileName(input.originalName)}`);
+    let file: CourseFile = {
+      id: fileId,
+      courseId,
+      originalName: input.originalName,
+      storedPath,
+      mimeType,
+      sizeBytes: 0,
+      status: "uploaded",
+      createdAt: now,
+      updatedAt: now
+    };
+
+    await mkdir(path.dirname(storedPath), { recursive: true });
+    state.files.push(file);
+
+    try {
+      await pipeline(input.stream, createWriteStream(storedPath));
+      const fileStat = await stat(storedPath);
+      file = this.updateFile(state, file.id, {
+        sizeBytes: fileStat.size,
+        status: "extracting",
+        updatedAt: new Date().toISOString()
+      });
+
+      const text = await readFile(storedPath, "utf8");
+      const blocks = await extractTextBlocks(file, text);
+
+      if (blocks.length === 0) {
+        const status = isPdf(file) ? "needs_ocr" : "failed";
+        const error = isPdf(file)
+          ? "PDF text extraction is not available in this dependency-free build; OCR or a local PDF text extractor is needed."
+          : "No extractable text was found in this file.";
+        file = this.updateFile(state, file.id, {
+          status,
+          error,
+          updatedAt: new Date().toISOString()
+        });
+      } else {
+        state.chunks = state.chunks.filter((chunk) => chunk.fileId !== file.id);
+        state.chunks.push(...chunkExtractedBlocks({ courseId, file, blocks }));
         await this.writeExtractedBlocks(courseId, file.id, blocks);
         file = this.updateFile(state, file.id, {
           status: "indexed",

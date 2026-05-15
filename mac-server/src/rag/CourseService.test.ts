@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { Readable } from "node:stream";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import { LocalCourseService } from "./CourseService.js";
 
@@ -54,6 +55,28 @@ describe("LocalCourseService", () => {
     assert.match(results[0].text, /except epsilon/);
     assert.match(results[0].sourceLabel, /lecture-follow\.txt/);
     assert.equal(typeof results[0].score, "number");
+  });
+
+  it("streams an uploaded text file to local storage before indexing", async () => {
+    const course = await service.createCourse({ name: "Streaming" });
+    const file = await service.addFileStream(course.id, {
+      originalName: "streamed-notes.txt",
+      mimeType: "text/plain",
+      stream: Readable.from([
+        "FOLLOW(A) receives FIRST(beta) when beta follows A. ",
+        "Add terminals except epsilon."
+      ])
+    });
+
+    const results = await service.retrieve(course.id, {
+      query: "FOLLOW FIRST except epsilon",
+      topK: 5
+    });
+
+    assert.equal(file.status, "indexed");
+    assert.equal(file.sizeBytes > 0, true);
+    assert.equal(results.length, 1);
+    assert.match(results[0].sourceLabel, /streamed-notes\.txt/);
   });
 
   it("keeps retrieval scoped to the requested course", async () => {

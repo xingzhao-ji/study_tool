@@ -278,6 +278,15 @@ curl -X POST http://localhost:3000/courses/<courseId>/files \
   -d '{"originalName":"lecture-follow.txt","mimeType":"text/plain","text":"FOLLOW(A) receives FIRST(beta) except epsilon when beta follows A."}'
 ```
 
+Non-JSON uploads can stream request bytes to local storage before indexing:
+
+```bash
+curl -X POST http://localhost:3000/courses/<courseId>/files \
+  -H "Content-Type: text/plain" \
+  -H "x-file-name: lecture-follow.txt" \
+  --data-binary @lecture-follow.txt
+```
+
 Check index status and retrieve:
 
 ```bash
@@ -313,7 +322,7 @@ curl -X DELETE http://localhost:3000/courses/<courseId>
 
 To delete all local course data manually, stop the server and remove `data/course-files/`, `data/extracted-text/`, and `data/course-index/`. Do not commit anything under `data/`.
 
-Designed for large local files, but first implementation has only been tested on small/medium fixtures. Current JSON upload bodies are buffered by Express, so true gigabyte-scale streaming upload is not implemented yet.
+Designed for large local files, but first implementation has only been tested on small/medium fixtures. JSON upload bodies and browser UI uploads are buffered. Non-JSON API uploads stream request bytes to local storage first, but text extraction still rereads the stored file for indexing.
 
 ## Session API
 
@@ -409,7 +418,7 @@ When the marker is exactly `?` and no `selectedIntent` is provided, the mock tut
 
 - The tutor can be useful for MVP testing, but the mock provider is rule-based and intentionally limited.
 - Local retrieval is lexical/BM25-like, not embeddings. It works for exact course terms and small fixtures but is not a semantic search engine yet.
-- Course upload currently reads selected files in the browser and sends buffered JSON to the local server; true streaming upload is still pending.
+- Browser course upload currently reads selected files in the browser and sends buffered JSON to the local server. Non-JSON API uploads stream to disk first, but indexing is still synchronous.
 - Session state is single-process memory, not a database.
 - Pairing protects LAN API routes, but this is still a personal-use local/LAN tool, not a hardened multi-user service.
 - Saved frames are opt-in with `SAVE_FRAMES=true` and should not be committed.

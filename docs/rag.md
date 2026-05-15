@@ -56,6 +56,15 @@ The first implementation supports JSON upload bodies:
 }
 ```
 
+The same endpoint also accepts non-JSON request bodies when `x-file-name` is present. This streams request bytes to local storage before indexing:
+
+```bash
+curl -X POST http://localhost:3000/courses/<courseId>/files \
+  -H "Content-Type: text/plain" \
+  -H "x-file-name: notes.txt" \
+  --data-binary @notes.txt
+```
+
 Supported extraction:
 
 - `.txt`
@@ -71,8 +80,9 @@ Designed for large local files, but first implementation has only been tested on
 
 Current limitations:
 
-- Upload bodies are buffered by Express JSON parsing.
+- JSON upload bodies are buffered by Express JSON parsing.
 - The web UI reads selected files into browser memory before uploading.
+- Non-JSON API uploads stream to disk first, then extraction rereads the local file for indexing.
 - Index state is stored as JSON metadata, not sqlite.
 - Retrieval is lexical/BM25-like, not embedding-based.
 - Indexing is synchronous for the current request.

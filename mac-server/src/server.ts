@@ -266,6 +266,11 @@ export function createApp(
   });
 
   app.post("/courses/:courseId/files", async (request: Request, response: Response) => {
+    if (!request.is("application/json")) {
+      await handleCourseFileStream(request, response);
+      return;
+    }
+
     const parsed = addCourseFileSchema.safeParse(request.body);
 
     if (!parsed.success) {
@@ -640,6 +645,30 @@ export function createApp(
     };
   }
 
+  async function handleCourseFileStream(request: Request, response: Response): Promise<void> {
+    const originalName = request.header("x-file-name")?.trim();
+
+    if (!originalName) {
+      response.status(400).json({
+        type: "error",
+        answer: "Course file stream upload requires an x-file-name header.",
+        provider: provider.name
+      });
+      return;
+    }
+
+    try {
+      const file = await courseService.addFileStream(request.params.courseId, {
+        originalName,
+        mimeType: contentTypeWithoutParameters(request.header("content-type")) || undefined,
+        stream: request
+      });
+      response.status(201).json({ file });
+    } catch (error) {
+      handleCourseError(error, response, provider.name);
+    }
+  }
+
   return app;
 }
 
@@ -723,6 +752,10 @@ function handleCourseError(error: unknown, response: Response, providerName: str
     provider: providerName,
     raw: error instanceof Error ? error.message : error
   });
+}
+
+function contentTypeWithoutParameters(value: string | undefined): string | null {
+  return value?.split(";")[0]?.trim() || null;
 }
 
 function validationErrorAnswer(prefix: string, error: ZodError): string {

@@ -63,16 +63,30 @@ describe("course RAG routes", () => {
     assert.equal(uploaded.status, 201);
     assert.equal(uploaded.body.file.status, "indexed");
 
+    const streamed = await fetch(`${baseUrl}/courses/${courseId}/files`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain",
+        "x-file-name": "streamed-follow.txt"
+      },
+      body: "A streamed upload can say FOLLOW(A) receives FIRST(beta) except epsilon."
+    });
+    const streamedBody = await streamed.json();
+
+    assert.equal(streamed.status, 201);
+    assert.equal(streamedBody.file.status, "indexed");
+    assert.equal(streamedBody.file.originalName, "streamed-follow.txt");
+
     const listed = await jsonRequest("GET", "/courses");
     assert.equal(listed.body.courses.length, 1);
 
     const status = await jsonRequest("GET", `/courses/${courseId}/index-status`);
-    assert.equal(status.body.indexedFiles, 1);
+    assert.equal(status.body.indexedFiles, 2);
     assert.equal(status.body.chunkCount > 0, true);
 
     const reindexed = await jsonRequest("POST", `/courses/${courseId}/reindex`);
     assert.equal(reindexed.status, 200);
-    assert.equal(reindexed.body.indexedFiles, 1);
+    assert.equal(reindexed.body.indexedFiles, 2);
     assert.equal(reindexed.body.chunkCount > 0, true);
 
     const retrieved = await jsonRequest("POST", `/courses/${courseId}/retrieve`, {
@@ -109,8 +123,11 @@ describe("course RAG routes", () => {
     assert.equal(groundedAnswer.body.type, "tutor_answer");
     assert.equal(groundedAnswer.body.grounded, true);
     assert.equal(groundedAnswer.body.groundingStatus, "used_course_context");
-    assert.equal(groundedAnswer.body.sources.length, 1);
-    assert.equal(groundedAnswer.body.sources[0].fileId, uploaded.body.file.id);
+    assert.equal(groundedAnswer.body.sources.length >= 1, true);
+    assert.equal(
+      groundedAnswer.body.sources.some((source: { fileId: string }) => source.fileId === uploaded.body.file.id),
+      true
+    );
     assert.match(groundedAnswer.body.answer, /uploaded course material/i);
 
     const deleted = await jsonRequest("DELETE", `/courses/${courseId}/files/${uploaded.body.file.id}`);
@@ -118,7 +135,7 @@ describe("course RAG routes", () => {
     assert.equal(deleted.body.deleted, true);
 
     const afterDelete = await jsonRequest("POST", `/courses/${courseId}/retrieve`, {
-      query: "FOLLOW(A) includes FIRST(B)",
+      query: "nullable left-hand side",
       topK: 5
     });
     assert.equal(afterDelete.body.chunks.length, 0);

@@ -53,6 +53,11 @@ curl -X POST http://localhost:3000/courses/<courseId>/files \
   -H "Content-Type: application/json" \
   -d '{"originalName":"follow.txt","mimeType":"text/plain","text":"FOLLOW(A) receives FIRST(beta) except epsilon when beta follows A."}'
 
+curl -X POST http://localhost:3000/courses/<courseId>/files \
+  -H "Content-Type: text/plain" \
+  -H "x-file-name: follow-stream.txt" \
+  --data-binary "FOLLOW(A) receives FIRST(beta) except epsilon."
+
 curl http://localhost:3000/courses/<courseId>/index-status
 
 curl -X POST http://localhost:3000/courses/<courseId>/reindex
