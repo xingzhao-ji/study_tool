@@ -6,6 +6,8 @@ const nearbyContext = document.querySelector("#nearbyContext");
 const askButton = document.querySelector("#askButton");
 const clearButton = document.querySelector("#clearButton");
 const answer = document.querySelector("#answer");
+const answerControls = document.querySelector("#answerControls");
+const showFullAnswer = document.querySelector("#showFullAnswer");
 const intentOptions = document.querySelector("#intentOptions");
 const responseType = document.querySelector("#responseType");
 const turns = document.querySelector("#turns");
@@ -33,6 +35,8 @@ let pairingRequired = false;
 let paired = true;
 let currentDetection = null;
 let pollTimer = null;
+let currentAnswerText = "";
+let answerExpanded = false;
 
 async function apiFetch(path, options = {}) {
   const headers = new Headers(options.headers ?? {});
@@ -260,12 +264,12 @@ function renderTutorResponse(body) {
   responseType.textContent = body.type;
 
   if (body.type === "intent_options") {
-    answer.textContent = "";
+    renderAnswerText("");
     renderIntentOptions(body.options ?? []);
     return;
   }
 
-  answer.textContent = body.answer ?? "No answer returned.";
+  renderAnswerText(body.answer ?? "No answer returned.");
 }
 
 function renderIntentOptions(options) {
@@ -281,7 +285,7 @@ function renderIntentOptions(options) {
   }
 
   if (options.length === 0) {
-    answer.textContent = "No intent options returned.";
+    renderAnswerText("No intent options returned.");
   }
 }
 
@@ -299,7 +303,7 @@ function renderSession(session) {
   } else if (!currentDetection) {
     currentQuestion.textContent = "";
     currentConfidence.textContent = "No detection";
-    answer.textContent = "";
+    renderAnswerText("");
     responseType.textContent = "Ready";
   }
 }
@@ -368,7 +372,29 @@ function reuseTurn(turn, nextMarker = turn.marker) {
 
 function renderError(message) {
   responseType.textContent = "Error";
-  answer.textContent = message;
+  renderAnswerText(message);
+}
+
+function renderAnswerText(text) {
+  currentAnswerText = text;
+  answer.replaceChildren();
+
+  if (!text) {
+    answerControls.hidden = true;
+    return;
+  }
+
+  const shouldCollapse = text.length > 650 && !answerExpanded;
+  const displayText = shouldCollapse ? `${text.slice(0, 650).trim()}...` : text;
+
+  for (const paragraph of displayText.split(/\n{2,}/).filter(Boolean)) {
+    const block = document.createElement("p");
+    block.textContent = paragraph;
+    answer.append(block);
+  }
+
+  answerControls.hidden = text.length <= 650;
+  showFullAnswer.textContent = answerExpanded ? "Show less" : "Show full";
 }
 
 function startPolling() {
@@ -390,9 +416,15 @@ clearButton.addEventListener("click", async () => {
   currentDetection = null;
   clearIntentOptions();
   detectionState.textContent = "Ready";
-  answer.textContent = "";
+  answerExpanded = false;
+  renderAnswerText("");
   responseType.textContent = "Ready";
   await loadSession();
+});
+
+showFullAnswer.addEventListener("click", () => {
+  answerExpanded = !answerExpanded;
+  renderAnswerText(currentAnswerText);
 });
 
 pairButton.addEventListener("click", async () => {

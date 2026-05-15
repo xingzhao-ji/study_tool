@@ -293,6 +293,28 @@ button:focus-visible {
   min-height: 190px;
 }
 
+.answer-box p {
+  margin: 0 0 10px;
+}
+
+.answer-box p:last-child {
+  margin-bottom: 0;
+}
+
+.answer-controls {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.answer-controls[hidden] {
+  display: none;
+}
+
+.answer-controls button {
+  min-height: 36px;
+  padding: 0 10px;
+}
+
 .detected-meta,
 .turn-meta {
   margin-bottom: 8px;

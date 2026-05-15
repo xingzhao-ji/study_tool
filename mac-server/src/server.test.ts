@@ -67,6 +67,8 @@ describe("mac server", () => {
     assert.equal(styleResponse.status, 200);
     assert.match(scriptBody, /submitAsk/);
     assert.match(scriptBody, /selectedIntent/);
+    assert.match(scriptBody, /renderAnswerText/);
+    assert.match(scriptBody, /showFullAnswer/);
     assert.match(styleBody, /\.app-shell/);
     assert.match(styleBody, /\.intent-options/);
   });
