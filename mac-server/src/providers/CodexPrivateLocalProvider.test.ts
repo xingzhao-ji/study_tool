@@ -36,6 +36,27 @@ describe("CodexPrivateLocalProvider", () => {
     assert.match(runner.calls[0]?.options.input ?? "", /Do not answer the question directly/);
   });
 
+  it("accepts JSON-array intent output from Codex", async () => {
+    const runner = new FakeCommandRunner([
+      {
+        stdout: JSON.stringify([
+          "Explain this step",
+          "Check my work",
+          "Give a hint"
+        ])
+      }
+    ]);
+    const provider = new CodexPrivateLocalProvider({ commandRunner: runner, timeoutMs: 500 });
+
+    const response = await provider.ask({
+      regionText: "u-substitution setup",
+      marker: "?"
+    });
+
+    assert.equal(response.type, "intent_options");
+    assert.deepEqual(response.options, ["Explain this step", "Check my work", "Give a hint"]);
+  });
+
   it("returns tutor answer text through a fake command runner when intent is selected", async () => {
     const runner = new FakeCommandRunner([
       {
@@ -56,6 +77,23 @@ describe("CodexPrivateLocalProvider", () => {
     assert.match(response.answer ?? "", /receives FIRST\(B\)/);
     assert.equal(response.confidence, 0.72);
     assert.match(runner.calls[0]?.options.input ?? "", /Return only the tutor response text/);
+  });
+
+  it("strips surrounding code fences from answer output", async () => {
+    const runner = new FakeCommandRunner([
+      {
+        stdout: "```text\nCheck the suffix after A first.\n```"
+      }
+    ]);
+    const provider = new CodexPrivateLocalProvider({ commandRunner: runner, timeoutMs: 500 });
+
+    const response = await provider.ask({
+      regionText: "FOLLOW(A) = {$}",
+      marker: "check?"
+    });
+
+    assert.equal(response.type, "tutor_answer");
+    assert.equal(response.answer, "Check the suffix after A first.");
   });
 
   it("adds marker-specific prompt constraints for small hints", async () => {
@@ -99,6 +137,25 @@ describe("CodexPrivateLocalProvider", () => {
     assert.equal((response.raw as { code: string }).code, "codex_bad_output");
   });
 
+  it("returns structured spawn errors when the Codex CLI cannot start", async () => {
+    const runner = new FakeCommandRunner([
+      {
+        stdout: "",
+        throws: new Error("spawn codex ENOENT")
+      }
+    ]);
+    const provider = new CodexPrivateLocalProvider({ commandRunner: runner, timeoutMs: 500 });
+
+    const response = await provider.ask({
+      regionText: "work",
+      marker: "hint?"
+    });
+
+    assert.equal(response.type, "error");
+    assert.equal((response.raw as { code: string }).code, "codex_spawn_error");
+    assert.match((response.raw as { stderr: string }).stderr, /ENOENT/);
+  });
+
   it("queues Codex calls so only one command runs at a time", async () => {
     const runner = new FakeCommandRunner([
       { stdout: "first answer", delayMs: 10 },
@@ -123,6 +180,7 @@ interface FakeResponse {
   exitCode?: number | null;
   timedOut?: boolean;
   delayMs?: number;
+  throws?: Error;
 }
 
 class FakeCommandRunner implements CommandRunner {
@@ -140,6 +198,11 @@ class FakeCommandRunner implements CommandRunner {
 
     if (response.delayMs) {
       await new Promise((resolve) => setTimeout(resolve, response.delayMs));
+    }
+
+    if (response.throws) {
+      this.activeCalls -= 1;
+      throw response.throws;
     }
 
     this.activeCalls -= 1;

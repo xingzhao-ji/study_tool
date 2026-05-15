@@ -1,6 +1,6 @@
 import type { TutorProvider, TutorRequest, TutorResponse } from "./TutorProvider.js";
 import { buildCheckPrompt, buildIntentPrompt, buildTutorPrompt } from "../tutor/PromptBuilder.js";
-import { ShellCommandRunner, type CommandRunner } from "./CommandRunner.js";
+import { ShellCommandRunner, type CommandResult, type CommandRunner } from "./CommandRunner.js";
 
 export interface CodexPrivateLocalProviderOptions {
   commandRunner?: CommandRunner;
@@ -37,29 +37,19 @@ export class CodexPrivateLocalProvider implements TutorProvider {
   private async askCodex(request: TutorRequest): Promise<TutorResponse> {
     const mode = request.marker.trim() === "?" && !request.selectedIntent ? "intent" : "answer";
     const prompt = buildCodexPrompt(request, mode);
-    const result = await this.commandRunner.run(
-      this.codexCommand,
-      [
-        "exec",
-        "--ephemeral",
-        "--skip-git-repo-check",
-        "--sandbox",
-        "read-only",
-        "-C",
-        this.cwd,
-        "-"
-      ],
-      {
-        cwd: this.cwd,
-        input: prompt,
-        timeoutMs: this.timeoutMs
-      }
-    );
+    const result = await this.runCodex(prompt);
 
     if (result.timedOut) {
       return this.errorResponse("Codex CLI timed out before returning a tutor response.", {
         code: "codex_timeout",
         timeoutMs: this.timeoutMs,
+        stderr: cleanCodexText(result.stderr)
+      });
+    }
+
+    if (result.exitCode === null) {
+      return this.errorResponse("Codex CLI could not be started. Confirm `codex` is installed and available on PATH.", {
+        code: "codex_spawn_error",
         stderr: cleanCodexText(result.stderr)
       });
     }
@@ -120,6 +110,36 @@ export class CodexPrivateLocalProvider implements TutorProvider {
       raw
     };
   }
+
+  private async runCodex(prompt: string): Promise<CommandResult> {
+    try {
+      return await this.commandRunner.run(
+        this.codexCommand,
+        [
+          "exec",
+          "--ephemeral",
+          "--skip-git-repo-check",
+          "--sandbox",
+          "read-only",
+          "-C",
+          this.cwd,
+          "-"
+        ],
+        {
+          cwd: this.cwd,
+          input: prompt,
+          timeoutMs: this.timeoutMs
+        }
+      );
+    } catch (error) {
+      return {
+        stdout: "",
+        stderr: error instanceof Error ? error.message : String(error),
+        exitCode: null,
+        timedOut: false
+      };
+    }
+  }
 }
 
 function buildCodexPrompt(request: TutorRequest, mode: "intent" | "answer"): string {
@@ -178,19 +198,47 @@ function markerInstruction(request: TutorRequest): string {
 }
 
 function cleanCodexText(text: string): string {
-  return text
+  const cleaned = text
     .split(/\r?\n/)
     .filter((line) => !line.startsWith("WARNING:"))
     .join("\n")
     .trim();
+
+  const fenced = cleaned.match(/^```(?:\w+)?\s*\n([\s\S]*?)\n```$/);
+  return fenced ? fenced[1].trim() : cleaned;
 }
 
 function parseIntentOptions(text: string): string[] {
+  const jsonOptions = parseJsonIntentOptions(text);
+
+  if (jsonOptions.length > 0) {
+    return jsonOptions;
+  }
+
   return text
     .split(/\r?\n/)
     .map((line) => line.trim())
     .map((line) => line.replace(/^[-*]\s+/, ""))
     .map((line) => line.replace(/^\d+[.)]\s+/, ""))
+    .map((line) => line.replace(/^["']|["']$/g, ""))
     .filter(Boolean)
     .slice(0, 5);
+}
+
+function parseJsonIntentOptions(text: string): string[] {
+  try {
+    const parsed = JSON.parse(text);
+
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .filter((option): option is string => typeof option === "string")
+      .map((option) => option.trim())
+      .filter(Boolean)
+      .slice(0, 5);
+  } catch {
+    return [];
+  }
 }
