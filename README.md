@@ -4,7 +4,7 @@ Goodnotes Companion Tutor is a private personal-use AI study companion for tutor
 
 ## Current Milestone
 
-This repository currently implements Milestones 0, 1, 2, and 3:
+This repository currently implements the core Mac/web pieces from Milestones 0 through 5:
 
 - A TypeScript Mac server skeleton.
 - `GET /health` for service checks.

@@ -53,7 +53,8 @@ Milestone 3 adds a browser-based local companion UI served by the Mac server at 
 - Enter simulated boxed Goodnotes text.
 - Select or type a marker.
 - Add a course hint and nearby context.
-- Submit to the local `/ask` endpoint.
+- Submit the main simulated-detection form to `/simulate-detection`.
+- Use `/ask` for direct tutor API calls when no session update is needed.
 - Choose an intent when the tutor returns `intent_options`.
 - View the latest tutor response and a short in-memory turn list.
 - Use quick answer actions for hint, next step, why, example, simplify, follow-up checking, and fuller solution requests.
