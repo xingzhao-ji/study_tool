@@ -80,6 +80,28 @@ export async function runSmoke(log: LogFn = console.log): Promise<void> {
     assert.match(tickCheck.answer, /correct so far/);
     log("POST /ask ✓? -> check path");
 
+    const emptyFrame = await jsonRequest(baseUrl, "POST /frame empty", "/frame", {
+      method: "POST",
+      body: {},
+      expectedStatus: 400
+    });
+    assert.equal(emptyFrame.type, "error");
+    assert.match(emptyFrame.answer, /frame data is required/);
+    log("POST /frame empty -> validation error");
+
+    const manualFrame = await jsonRequest(baseUrl, "POST /frame manual", "/frame", {
+      method: "POST",
+      body: {
+        dataUrl: "data:text/plain;base64,aGVsbG8=",
+        regionText: "FOLLOW(A) includes FIRST(B)",
+        marker: "?",
+        courseHint: "CS 132 parsing"
+      }
+    });
+    assert.equal(manualFrame.tutorResponse.type, "intent_options");
+    assert.equal(manualFrame.frame.saved, false);
+    log("POST /frame manual -> intent_options");
+
     const detection = await jsonRequest(baseUrl, "POST /simulate-detection", "/simulate-detection", {
       method: "POST",
       body: {
@@ -152,7 +174,7 @@ async function jsonRequest(
   baseUrl: string,
   label: string,
   path: string,
-  options: { method?: string; body?: unknown } = {}
+  options: { method?: string; body?: unknown; expectedStatus?: number } = {}
 ): Promise<Record<string, any>> {
   const response = await fetch(`${baseUrl}${path}`, {
     method: options.method ?? "GET",
@@ -160,7 +182,11 @@ async function jsonRequest(
     body: options.body ? JSON.stringify(options.body) : undefined
   });
   const body = await response.json();
-  assert.equal(response.status, 200, `${label} returned ${response.status}: ${JSON.stringify(body)}`);
+  assert.equal(
+    response.status,
+    options.expectedStatus ?? 200,
+    `${label} returned ${response.status}: ${JSON.stringify(body)}`
+  );
   return body;
 }
 

@@ -10,6 +10,8 @@ describe("smoke script", () => {
 
     assert.ok(lines.includes("Smoke test passed"));
     assert.ok(lines.some((line) => line.includes("POST /ask ? -> intent_options")));
+    assert.ok(lines.some((line) => line.includes("POST /frame empty -> validation error")));
+    assert.ok(lines.some((line) => line.includes("POST /frame manual -> intent_options")));
     assert.ok(lines.some((line) => line.includes("POST /clear-session -> reset")));
   });
 });
