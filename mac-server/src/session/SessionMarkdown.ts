@@ -32,6 +32,8 @@ function formatTurn(turn: TutorSessionTurn, index: number): string[] {
     "",
     `Created: ${turn.createdAt}`,
     `Course: ${turn.courseHint || "none"}`,
+    `Provider: ${turn.provider}`,
+    `Confidence: ${formatConfidence(turn.confidence)}`,
     "",
     "Boxed text:",
     "",
@@ -46,7 +48,7 @@ function formatTurn(turn: TutorSessionTurn, index: number): string[] {
   ];
 
   if (turn.nearbyContext) {
-    lines.splice(5, 0, `Nearby context: ${turn.nearbyContext}`, "");
+    lines.splice(7, 0, `Nearby context: ${turn.nearbyContext}`, "");
   }
 
   return lines;
@@ -54,4 +56,8 @@ function formatTurn(turn: TutorSessionTurn, index: number): string[] {
 
 function safeFenceText(value: string): string {
   return value.replace(/```/g, "'''").trim();
+}
+
+function formatConfidence(confidence: number | undefined): string {
+  return confidence === undefined ? "unknown" : `${Math.round(confidence * 100)}%`;
 }

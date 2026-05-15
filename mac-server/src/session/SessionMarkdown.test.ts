@@ -25,6 +25,8 @@ describe("formatSessionMarkdown", () => {
     assert.match(markdown, /Session: markdown-session/);
     assert.match(markdown, /## 1\. check\?/);
     assert.match(markdown, /Course: CS 132 parsing/);
+    assert.match(markdown, /Provider: mock/);
+    assert.match(markdown, /Confidence: 70%/);
     assert.match(markdown, /Nearby context: S -> A B/);
     assert.match(markdown, /FOLLOW\(A\) = \{'''\}/);
     assert.match(markdown, /First issue: FOLLOW sets should not contain ε\./);
