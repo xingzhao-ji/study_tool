@@ -59,6 +59,19 @@ describe("checkCodexStatus", () => {
     assert.doesNotMatch(status.checks[1]?.output ?? "", /sk-/i);
     assert.match(status.checks[1]?.output ?? "", /\[redacted-api-key\]/);
   });
+
+  it("redacts bearer-token-shaped status output", async () => {
+    const runner = new FakeCommandRunner([
+      { stdout: "/usr/local/bin/codex\n", exitCode: 0 },
+      { stderr: "Authorization: Bearer secret-token-1234567890\n", exitCode: 1 }
+    ]);
+
+    const status = await checkCodexStatus({ commandRunner: runner, timeoutMs: 500 });
+
+    assert.equal(status.loginStatus, "needs_attention");
+    assert.doesNotMatch(status.checks[1]?.output ?? "", /secret-token-1234567890/);
+    assert.match(status.checks[1]?.output ?? "", /Bearer \[redacted-token\]/);
+  });
 });
 
 interface FakeResponse {

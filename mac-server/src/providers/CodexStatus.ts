@@ -103,7 +103,9 @@ function cleanStatusOutput(value: string): string {
 }
 
 function redactSensitiveStatusText(value: string): string {
-  return value.replace(/\bsk-[A-Za-z0-9_*.-]+/g, "[redacted-api-key]");
+  return value
+    .replace(/\bsk-[A-Za-z0-9_*.-]+/g, "[redacted-api-key]")
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi, "Bearer [redacted-token]");
 }
 
 function firstLine(value: string): string | undefined {
