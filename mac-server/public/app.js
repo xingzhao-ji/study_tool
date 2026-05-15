@@ -970,9 +970,7 @@ function renderSources(sources) {
 
   for (const source of sources) {
     const item = document.createElement("li");
-    item.textContent = source.pageNumber
-      ? `${source.sourceLabel} p.${source.pageNumber}`
-      : source.sourceLabel;
+    item.textContent = source.sourceLabel;
     answerSources.append(item);
   }
 }

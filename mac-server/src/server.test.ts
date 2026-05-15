@@ -148,6 +148,8 @@ describe("mac server", () => {
     assert.match(scriptBody, /previewRetrieval/);
     assert.match(scriptBody, /renderSources/);
     assert.match(scriptBody, /FileReader/);
+    assert.match(scriptBody, /item\.textContent = source\.sourceLabel/);
+    assert.doesNotMatch(scriptBody, /source\.sourceLabel} p\./);
     assert.match(scriptBody, /"x-file-name": file\.name/);
     assert.match(scriptBody, /body: file/);
     assert.doesNotMatch(scriptBody, /readFileAsText\(file\)/);
