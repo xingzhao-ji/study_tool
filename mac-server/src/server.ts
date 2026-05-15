@@ -46,7 +46,7 @@ const detectionSchema = z.object({
 
 const frameSchema = z
   .object({
-    dataUrl: z.string().trim().optional(),
+    dataUrl: z.string().trim().refine(isBase64DataUrl).optional(),
     imageBase64: z.string().trim().optional(),
     filename: z.string().optional(),
     mimeType: z.string().optional(),
@@ -60,6 +60,10 @@ const frameSchema = z
     path: ["frame data"],
     message: "frame data is required"
   });
+
+function isBase64DataUrl(value: string): boolean {
+  return /^data:[^;,]*;base64,[A-Za-z0-9+/]+={0,2}$/.test(value);
+}
 
 const selectIntentSchema = z.object({
   questionId: z.string().trim().optional(),
