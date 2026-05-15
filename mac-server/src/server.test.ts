@@ -89,6 +89,7 @@ describe("mac server", () => {
     assert.match(body, /id="uploadCourseFilesButton"/);
     assert.match(body, /id="courseFiles"/);
     assert.match(body, /id="reindexCourseButton"/);
+    assert.match(body, /id="deleteCourseButton"/);
     assert.match(body, /id="retrievalQuery"/);
     assert.match(body, /id="retrievalTopK"/);
     assert.match(body, /id="retrievalButton"/);
@@ -144,6 +145,7 @@ describe("mac server", () => {
     assert.match(scriptBody, /createCourse/);
     assert.match(scriptBody, /uploadCourseFiles/);
     assert.match(scriptBody, /reindexActiveCourse/);
+    assert.match(scriptBody, /deleteActiveCourse/);
     assert.match(scriptBody, /deleteCourseFile/);
     assert.match(scriptBody, /previewRetrieval/);
     assert.match(scriptBody, /renderSources/);

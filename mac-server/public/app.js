@@ -16,6 +16,7 @@ const createCourseButton = document.querySelector("#createCourseButton");
 const courseUploadInput = document.querySelector("#courseUploadInput");
 const uploadCourseFilesButton = document.querySelector("#uploadCourseFilesButton");
 const reindexCourseButton = document.querySelector("#reindexCourseButton");
+const deleteCourseButton = document.querySelector("#deleteCourseButton");
 const courseFiles = document.querySelector("#courseFiles");
 const retrievalQuery = document.querySelector("#retrievalQuery");
 const retrievalTopK = document.querySelector("#retrievalTopK");
@@ -526,6 +527,46 @@ async function reindexActiveCourse() {
     renderError(error.message || "The local tutor server could not reindex this course.");
   } finally {
     reindexCourseButton.disabled = false;
+  }
+}
+
+async function deleteActiveCourse() {
+  if (pairingRequired && !paired) {
+    renderError("Enter the pairing token before deleting a course.");
+    return;
+  }
+
+  if (!activeCourseId) {
+    activeCourseStatus.textContent = "Select a course";
+    return;
+  }
+
+  const course = courses.find((candidate) => candidate.id === activeCourseId);
+  const courseName = course?.name ?? "this course";
+
+  if (!window.confirm(`Delete "${courseName}" and all of its local course files and chunks?`)) {
+    return;
+  }
+
+  deleteCourseButton.disabled = true;
+  activeCourseStatus.textContent = "Deleting course";
+
+  try {
+    const response = await apiFetch(`/courses/${activeCourseId}`, { method: "DELETE" });
+    const body = await response.json();
+
+    if (!response.ok) {
+      throw new Error(body.answer ?? "delete course failed");
+    }
+
+    activeCourseId = "";
+    await saveSessionSettings();
+    await loadCourses();
+  } catch (error) {
+    activeCourseStatus.textContent = "Delete failed";
+    renderError(error.message || "The local tutor server could not delete this course.");
+  } finally {
+    deleteCourseButton.disabled = false;
   }
 }
 
@@ -1224,6 +1265,7 @@ resetFormButton.addEventListener("click", resetForm);
 createCourseForm.addEventListener("submit", createCourse);
 uploadCourseFilesButton.addEventListener("click", uploadCourseFiles);
 reindexCourseButton.addEventListener("click", reindexActiveCourse);
+deleteCourseButton.addEventListener("click", deleteActiveCourse);
 retrievalButton.addEventListener("click", previewRetrieval);
 courseSelect.addEventListener("change", async () => {
   activeCourseId = courseSelect.value;

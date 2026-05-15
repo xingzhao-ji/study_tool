@@ -19,6 +19,8 @@ Delete an uploaded file from the web UI or with `DELETE /courses/:courseId/files
 
 Rebuild a course index from the web UI or with `POST /courses/:courseId/reindex`. This rereads locally stored files and replaces the course's chunks. It is useful after extraction code changes or manual fixture edits.
 
+Delete an entire course from the web UI or with `DELETE /courses/:courseId`. This removes the course record, uploaded originals, extracted text records, and indexed chunks.
+
 ## Grounding Policy
 
 Course-grounded answers follow this priority:
