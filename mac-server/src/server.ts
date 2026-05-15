@@ -9,6 +9,7 @@ import {
   requestFromDetection,
   type DetectionInput
 } from "./session/TutorStateStore.js";
+import { formatSessionMarkdown } from "./session/SessionMarkdown.js";
 import type { PairingConfig } from "./security/Pairing.js";
 import { FrameStore } from "./frame/FrameStore.js";
 
@@ -280,6 +281,10 @@ export function createApp(
 
   app.get("/session", (_request: Request, response: Response) => {
     response.json(stateStore.getSession());
+  });
+
+  app.get("/session.md", (_request: Request, response: Response) => {
+    response.type("text/markdown").send(formatSessionMarkdown(stateStore.getSession()));
   });
 
   app.post("/clear-session", (_request: Request, response: Response) => {

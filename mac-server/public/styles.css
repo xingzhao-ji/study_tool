@@ -405,6 +405,20 @@ button:focus-visible {
   padding: 0 10px;
 }
 
+.history-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.history-actions button {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 0.88rem;
+}
+
 @media (max-width: 860px) {
   .app-shell {
     width: min(100% - 20px, 1180px);
@@ -433,7 +447,8 @@ button:focus-visible {
   .marker-row button,
   .intent-option,
   .answer-actions button,
-  .turn-actions button {
+  .turn-actions button,
+  .history-actions button {
     flex: 1 1 auto;
   }
 

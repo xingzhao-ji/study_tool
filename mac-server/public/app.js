@@ -12,6 +12,8 @@ const intentOptions = document.querySelector("#intentOptions");
 const responseType = document.querySelector("#responseType");
 const turns = document.querySelector("#turns");
 const turnCount = document.querySelector("#turnCount");
+const copySessionButton = document.querySelector("#copySessionButton");
+const downloadSessionButton = document.querySelector("#downloadSessionButton");
 const serviceStatus = document.querySelector("#serviceStatus");
 const providerStatus = document.querySelector("#providerStatus");
 const sessionStatus = document.querySelector("#sessionStatus");
@@ -263,6 +265,68 @@ async function selectedIntent(option) {
   }
 }
 
+async function fetchSessionMarkdown() {
+  const response = await apiFetch("/session.md", {
+    headers: { Accept: "text/markdown" }
+  });
+
+  if (!response.ok) {
+    throw new Error("session markdown failed");
+  }
+
+  return response.text();
+}
+
+async function copySessionNotes() {
+  if (pairingRequired && !paired) {
+    return;
+  }
+
+  copySessionButton.disabled = true;
+
+  try {
+    const markdown = await fetchSessionMarkdown();
+
+    if (!navigator.clipboard?.writeText) {
+      throw new Error("clipboard unavailable");
+    }
+
+    await navigator.clipboard.writeText(markdown);
+    turnCount.textContent = "Copied";
+    setTimeout(loadSession, 1200);
+  } catch (error) {
+    renderError("Copy is unavailable in this browser. Use Download .md instead.");
+  } finally {
+    copySessionButton.disabled = false;
+  }
+}
+
+async function downloadSessionNotes() {
+  if (pairingRequired && !paired) {
+    return;
+  }
+
+  downloadSessionButton.disabled = true;
+
+  try {
+    const markdown = await fetchSessionMarkdown();
+    const blob = new Blob([markdown], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const date = new Date().toISOString().slice(0, 10);
+    link.href = url;
+    link.download = `goodnotes-companion-session-${date}.md`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    renderError("The local tutor server could not export this session.");
+  } finally {
+    downloadSessionButton.disabled = false;
+  }
+}
+
 function renderDetectionResult(body) {
   currentDetection = body.detectedQuestion;
   detectionState.textContent = "Detected";
@@ -445,6 +509,8 @@ pairButton.addEventListener("click", async () => {
   startPolling();
 });
 
+copySessionButton.addEventListener("click", copySessionNotes);
+downloadSessionButton.addEventListener("click", downloadSessionNotes);
 uploadFrameButton.addEventListener("click", () => uploadFrame(true));
 uploadFrameOnlyButton.addEventListener("click", () => uploadFrame(false));
 frameFile.addEventListener("change", async () => {

@@ -55,6 +55,8 @@ describe("mac server", () => {
     assert.match(body, /id="connectionSession"/);
     assert.match(body, /id="framePreview"/);
     assert.match(body, /id="uploadFrameOnlyButton"/);
+    assert.match(body, /id="copySessionButton"/);
+    assert.match(body, /id="downloadSessionButton"/);
     assert.match(body, /id="intentOptions"/);
     assert.match(body, /id="turns"/);
   });
@@ -71,8 +73,11 @@ describe("mac server", () => {
     assert.match(scriptBody, /selectedIntent/);
     assert.match(scriptBody, /renderAnswerText/);
     assert.match(scriptBody, /showFullAnswer/);
+    assert.match(scriptBody, /copySessionNotes/);
+    assert.match(scriptBody, /downloadSessionNotes/);
     assert.match(styleBody, /\.app-shell/);
     assert.match(styleBody, /\.intent-options/);
+    assert.match(styleBody, /\.history-actions/);
   });
 
   it("allows localhost mode without pairing", async () => {
@@ -147,6 +152,29 @@ describe("mac server", () => {
     assert.equal(body.provider, "mock");
     assert.equal(body.confidence, 0.8);
     assert.match(body.answer, /FOLLOW\(A\) can receive FIRST\(B\)/);
+  });
+
+  it("exports the in-memory session as markdown notes", async () => {
+    await fetch(`${baseUrl}/simulate-detection`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        regionText: "FOLLOW(A) = {$}",
+        marker: "check?",
+        courseHint: "CS 132 parsing",
+        nearbyContext: "S -> A B"
+      })
+    });
+
+    const response = await fetch(`${baseUrl}/session.md`);
+    const body = await response.text();
+
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type") ?? "", /text\/markdown/);
+    assert.match(body, /# Goodnotes Companion Tutor Session/);
+    assert.match(body, /FOLLOW\(A\) = \{\$\}/);
+    assert.match(body, /First issue:/);
+    assert.doesNotMatch(body, /data:image/);
   });
 });
 
