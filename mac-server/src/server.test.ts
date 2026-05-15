@@ -123,6 +123,21 @@ describe("mac server", () => {
     assert.match(scriptBody, /prepareFollowUpCheck/);
     assert.match(scriptBody, /Enter the new boxed work to check/);
     assert.match(scriptBody, /draftingFollowUpCheck/);
+    for (const endpoint of [
+      "/pairing",
+      "/health",
+      "/providers",
+      "/codex/status",
+      "/session",
+      "/session.md",
+      "/simulate-detection",
+      "/select-intent",
+      "/frame",
+      "/undo-last",
+      "/clear-session"
+    ]) {
+      assert.ok(scriptBody.includes(`"${endpoint}"`), `expected app.js to call ${endpoint}`);
+    }
     assert.match(styleBody, /\.app-shell/);
     assert.match(styleBody, /\.intent-options/);
     assert.match(styleBody, /\.history-actions/);
