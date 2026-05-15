@@ -12,6 +12,7 @@ const intentOptions = document.querySelector("#intentOptions");
 const responseType = document.querySelector("#responseType");
 const turns = document.querySelector("#turns");
 const turnCount = document.querySelector("#turnCount");
+const undoLastButton = document.querySelector("#undoLastButton");
 const copySessionButton = document.querySelector("#copySessionButton");
 const downloadSessionButton = document.querySelector("#downloadSessionButton");
 const serviceStatus = document.querySelector("#serviceStatus");
@@ -361,6 +362,33 @@ async function downloadSessionNotes() {
   }
 }
 
+async function undoLastTurn() {
+  if (pairingRequired && !paired) {
+    return;
+  }
+
+  undoLastButton.disabled = true;
+  draftingFollowUpCheck = false;
+
+  try {
+    const response = await apiFetch("/undo-last", { method: "POST" });
+    const body = await response.json();
+
+    if (!response.ok) {
+      throw new Error("undo failed");
+    }
+
+    currentDetection = body.session.latest?.detectedQuestion ?? null;
+    detectionState.textContent = currentDetection ? "Restored previous" : "Ready";
+    responseType.textContent = currentDetection ? "Restored" : "Ready";
+    await loadSession();
+  } catch (error) {
+    renderError("The local tutor server could not undo the latest turn.");
+  } finally {
+    undoLastButton.disabled = false;
+  }
+}
+
 function renderDetectionResult(body) {
   draftingFollowUpCheck = false;
   currentDetection = body.detectedQuestion;
@@ -589,6 +617,7 @@ pairButton.addEventListener("click", async () => {
 });
 
 codexStatusButton.addEventListener("click", checkCodexStatus);
+undoLastButton.addEventListener("click", undoLastTurn);
 copySessionButton.addEventListener("click", copySessionNotes);
 downloadSessionButton.addEventListener("click", downloadSessionNotes);
 uploadFrameButton.addEventListener("click", () => uploadFrame(true));

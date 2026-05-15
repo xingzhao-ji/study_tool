@@ -17,6 +17,7 @@ export interface TutorSessionTurn extends TutorTurn {
   detectedQuestionId: string;
   courseHint?: string;
   nearbyContext?: string;
+  provider: TutorResponse["provider"];
   type: TutorResponse["type"];
   options?: string[];
   confidence?: number;
@@ -93,6 +94,7 @@ export class InMemoryTutorStateStore {
       selectedIntent: detectedQuestion.selectedIntent,
       courseHint: detectedQuestion.courseHint,
       nearbyContext: detectedQuestion.nearbyContext,
+      provider: tutorResponse.provider,
       answer: tutorResponse.answer,
       type: tutorResponse.type,
       options: tutorResponse.options,
@@ -136,6 +138,48 @@ export class InMemoryTutorStateStore {
       latest: null
     };
     return this.session;
+  }
+
+  undoLatest(): TutorSession {
+    const latestDetectionId = this.session.latest?.detectedQuestion.id ?? this.session.detections.at(-1)?.id;
+
+    if (!latestDetectionId) {
+      return this.session;
+    }
+
+    this.session = {
+      ...this.session,
+      detections: this.session.detections.filter((detection) => detection.id !== latestDetectionId),
+      turns: this.session.turns.filter((turn) => turn.detectedQuestionId !== latestDetectionId),
+      latest: null
+    };
+    this.session.latest = this.latestFromLastTurn();
+    return this.session;
+  }
+
+  private latestFromLastTurn(): TutorSessionLatest | null {
+    const turn = this.session.turns.at(-1);
+
+    if (!turn) {
+      return null;
+    }
+
+    const detectedQuestion = this.session.detections.find((detection) => detection.id === turn.detectedQuestionId);
+
+    if (!detectedQuestion) {
+      return null;
+    }
+
+    return {
+      detectedQuestion,
+      tutorResponse: {
+        type: "tutor_answer",
+        answer: turn.answer,
+        options: turn.options,
+        confidence: turn.confidence,
+        provider: turn.provider
+      }
+    };
   }
 }
 

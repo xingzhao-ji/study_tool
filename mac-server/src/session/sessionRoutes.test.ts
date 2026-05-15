@@ -75,11 +75,20 @@ describe("session routes", () => {
     assert.equal(lastProviderRequest?.previousTutorState?.length, 1);
   });
 
+  it("undoes the latest detection and restores the previous answer", async () => {
+    const response = await post("/undo-last", {});
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.session.turns.length, 1);
+    assert.equal(response.body.session.latest.detectedQuestion.marker, "?");
+    assert.equal(response.body.session.latest.tutorResponse.answer, "answer 2");
+  });
+
   it("returns latest response and clears session state", async () => {
     const latest = await get("/latest");
 
     assert.equal(latest.status, 200);
-    assert.equal(latest.body.latest.detectedQuestion.marker, "check?");
+    assert.equal(latest.body.latest.detectedQuestion.marker, "?");
     assert.equal(latest.body.latest.tutorResponse.type, "tutor_answer");
 
     const cleared = await post("/clear-session", {});

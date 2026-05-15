@@ -82,6 +82,7 @@ describe("mac server", () => {
     assert.match(body, /id="uploadFrameOnlyButton"/);
     assert.match(body, /id="copySessionButton"/);
     assert.match(body, /id="downloadSessionButton"/);
+    assert.match(body, /id="undoLastButton"/);
     assert.match(body, /id="intentOptions"/);
     assert.match(body, /id="turns"/);
   });
@@ -102,6 +103,7 @@ describe("mac server", () => {
     assert.match(scriptBody, /checkCodexStatus/);
     assert.match(scriptBody, /copySessionNotes/);
     assert.match(scriptBody, /downloadSessionNotes/);
+    assert.match(scriptBody, /undoLastTurn/);
     assert.match(scriptBody, /prepareFollowUpCheck/);
     assert.match(scriptBody, /Enter the new boxed work to check/);
     assert.match(scriptBody, /draftingFollowUpCheck/);

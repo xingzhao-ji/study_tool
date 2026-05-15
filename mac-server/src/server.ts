@@ -310,6 +310,12 @@ export function createApp(
     });
   });
 
+  app.post("/undo-last", (_request: Request, response: Response) => {
+    response.json({
+      session: stateStore.undoLatest()
+    });
+  });
+
   async function runDetection(input: DetectionInput) {
     const detectedQuestion = stateStore.addDetection(input);
     const previousTutorState = stateStore.previousTutorState();
