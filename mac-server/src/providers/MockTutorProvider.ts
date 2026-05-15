@@ -138,8 +138,15 @@ export class MockTutorProvider implements TutorProvider {
     const text = request.regionText.toLowerCase();
     const hasPreviousTutorContext = (request.previousTutorState?.length ?? 0) > 0;
     const contextLead = hasPreviousTutorContext ? "Using the previous tutor note: " : "";
+    const mentionsFollowAndFirst = text.includes("follow") && text.includes("first");
+    const excludesEpsilon = /minus\s*(ε|epsilon)|excluding\s*(ε|epsilon)|without\s*(ε|epsilon)|-\s*ε/.test(text);
+    const hasFollowCondition = /(when|if).*(follows|after|suffix|immediately)/.test(text);
 
-    if (text.includes("ε") || text.includes("epsilon")) {
+    if (mentionsFollowAndFirst && excludesEpsilon && hasFollowCondition) {
+      return `${contextLead}This is correct so far. Next, check whether the suffix after A can vanish; only then should FOLLOW of the left-hand side flow into FOLLOW(A).`;
+    }
+
+    if (/follow\s*\([^)]*\)\s*=\s*\{[^}]*(epsilon|ε)[^}]*\}/i.test(request.regionText)) {
       return `${contextLead}First issue: FOLLOW sets should not contain ε. Add terminals from FIRST of the suffix, and if that suffix can vanish, add FOLLOW of the production's left-hand side instead.`;
     }
 
@@ -147,7 +154,7 @@ export class MockTutorProvider implements TutorProvider {
       return `${contextLead}First issue: this FOLLOW set is probably missing terminals from the suffix after the nonterminal. If B follows A, add FIRST(B) minus ε before deciding whether $ also belongs.`;
     }
 
-    if (text.includes("follow") && text.includes("first")) {
+    if (mentionsFollowAndFirst) {
       return `${contextLead}First issue: make the condition explicit. Add FIRST of the suffix after A, excluding ε; FIRST(B) flows into FOLLOW(A) only when B starts that suffix in a production.`;
     }
 

@@ -115,4 +115,16 @@ describe("MockTutorProvider", () => {
     assert.equal(response.type, "tutor_answer");
     assert.match(response.answer ?? "", /should not contain ε/i);
   });
+
+  it("recognizes a correct FIRST/FOLLOW condition before suggesting another step", async () => {
+    const response = await provider.ask({
+      regionText: "FOLLOW(A) gets FIRST(B) minus ε when B follows A",
+      marker: "check?",
+      courseHint: "CS 132 parsing"
+    });
+
+    assert.equal(response.type, "tutor_answer");
+    assert.match(response.answer ?? "", /correct so far/i);
+    assert.doesNotMatch(response.answer ?? "", /First issue/i);
+  });
 });
