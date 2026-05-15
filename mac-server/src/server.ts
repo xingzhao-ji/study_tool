@@ -1,6 +1,7 @@
 import express, { type Express, type Request, type Response } from "express";
 import { z } from "zod";
 import type { TutorProvider } from "./providers/TutorProvider.js";
+import { TUTOR_PROVIDER_DESCRIPTORS } from "./providers/ProviderFactory.js";
 
 const askSchema = z.object({
   regionText: z.string().min(1),
@@ -31,6 +32,13 @@ export function createApp(provider: TutorProvider): Express {
       ok: true,
       service: "goodnotes-companion-tutor",
       provider: provider.name
+    });
+  });
+
+  app.get("/providers", (_request: Request, response: Response) => {
+    response.json({
+      activeProvider: provider.name,
+      providers: TUTOR_PROVIDER_DESCRIPTORS
     });
   });
 

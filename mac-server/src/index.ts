@@ -1,9 +1,9 @@
-import { MockTutorProvider } from "./providers/MockTutorProvider.js";
+import { createTutorProvider } from "./providers/ProviderFactory.js";
 import { createApp } from "./server.js";
 
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
 const host = process.env.HOST ?? "127.0.0.1";
-const provider = new MockTutorProvider();
+const provider = createTutorProvider({ providerName: process.env.TUTOR_PROVIDER });
 const app = createApp(provider);
 
 app.listen(port, host, () => {

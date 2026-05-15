@@ -1,17 +1,19 @@
 # Goodnotes Companion Tutor
 
-Goodnotes Companion Tutor is a private personal-use AI study companion for tutoring around handwritten Goodnotes work. The current build is Mac-only and simulates the tutor loop without screen capture, OCR, image processing, iOS, ReplayKit, PiP, or Codex shellout.
+Goodnotes Companion Tutor is a private personal-use AI study companion for tutoring around handwritten Goodnotes work. The current build is Mac-only and simulates the tutor loop plus a provider integration boundary without screen capture, OCR, image processing, iOS, ReplayKit, PiP, or Codex shellout.
 
 ## Current Milestone
 
-This repository currently implements Milestone 0 and Milestone 1:
+This repository currently implements Milestones 0, 1, and 2:
 
 - A TypeScript Mac server skeleton.
 - `GET /health` for service checks.
 - `POST /ask` for a mock tutor loop.
 - A local simulation script that exercises ambiguous intent selection and tutor answering.
+- A provider-selection boundary for `mock` and `codex_private_local`.
+- `GET /providers` for provider status and capability discovery.
 
-The Codex private local provider is intentionally not implemented yet.
+The Codex private local provider is intentionally not implemented yet. It only returns generated prompt metadata and a privacy-safe not-implemented response.
 
 ## Setup
 
@@ -28,6 +30,15 @@ npm run dev
 ```
 
 The server listens on `http://localhost:3000` by default. You can override the port with `PORT`.
+
+The mock provider is used by default. You can select the placeholder Codex provider with:
+
+```bash
+cd mac-server
+TUTOR_PROVIDER=codex_private_local npm run dev
+```
+
+This does not run Codex, read Codex auth, inspect local config, or access private files.
 
 ## Run Simulation
 
@@ -52,6 +63,30 @@ Expected response:
 }
 ```
 
+## Example Provider Listing
+
+```bash
+curl http://localhost:3000/providers
+```
+
+Expected provider names:
+
+```json
+{
+  "activeProvider": "mock",
+  "providers": [
+    {
+      "name": "mock",
+      "status": "available"
+    },
+    {
+      "name": "codex_private_local",
+      "status": "not_implemented"
+    }
+  ]
+}
+```
+
 ## Example Tutor Request
 
 ```bash
@@ -65,6 +100,7 @@ When the marker is exactly `?` and no `selectedIntent` is provided, the mock tut
 ## Safety And Privacy Notes
 
 - This milestone does not read Goodnotes, capture the screen, process images, run OCR, or shell out to Codex.
+- The Milestone 2 provider boundary does not read `~/.codex`, `~/.openclaw`, environment auth files, browser profiles, or system credential stores.
 - Do not commit secrets, authentication files, screenshots, captured frames, OCR logs, local study data, or private session logs.
 - `.env`, `auth.json`, `.codex`, `.openclaw`, captured frame directories, log directories, screenshots, and local study data paths are ignored by Git.
 - Future providers must not inspect `~/.codex`, `~/.openclaw`, browser profiles, system credential stores, or private notes unless explicitly approved.
@@ -72,4 +108,4 @@ When the marker is exactly `?` and no `selectedIntent` is provided, the mock tut
 ## Provider Status
 
 - `mock`: implemented and used by default.
-- `codex_private_local`: placeholder only. It returns a clear not-implemented response and does not access Codex auth or local private configuration.
+- `codex_private_local`: Milestone 2 placeholder only. It returns a clear not-implemented response with generated prompt strings and does not access Codex auth, shell out, or inspect local private configuration.

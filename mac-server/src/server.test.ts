@@ -42,6 +42,28 @@ describe("mac server", () => {
     });
   });
 
+  it("lists provider capabilities without enabling private local execution", async () => {
+    const response = await fetch(`${baseUrl}/providers`);
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(body, {
+      activeProvider: "mock",
+      providers: [
+        {
+          name: "mock",
+          status: "available",
+          description: "Rule-based local mock tutor for Milestones 0-2."
+        },
+        {
+          name: "codex_private_local",
+          status: "not_implemented",
+          description: "Design placeholder only. No Codex auth, shellout, or private file access."
+        }
+      ]
+    });
+  });
+
   it("returns intent options for a bare question marker", async () => {
     const response = await fetch(`${baseUrl}/ask`, {
       method: "POST",

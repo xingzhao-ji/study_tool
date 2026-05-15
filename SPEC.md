@@ -19,7 +19,7 @@ The long-term system has four conceptual parts:
 3. Companion UI: a future iPhone, iPad, or Mac interface asks for intent clarification and displays short tutor turns.
 4. Tutor provider: a local provider builds prompts and asks the selected model or local tool for step-by-step tutoring.
 
-Milestones 0-1 intentionally implement only a Mac-only mock tutor loop. There is no capture, OCR, image processing, PiP, iOS app, or Codex shellout yet.
+Milestones 0-2 intentionally implement only a Mac-only mock tutor loop and provider integration boundary. There is no capture, OCR, image processing, PiP, iOS app, or Codex shellout yet.
 
 ## Current Mac-Only Loop
 
@@ -29,6 +29,19 @@ The Mac server exposes:
 - `POST /ask`: accepts boxed region text, marker, optional selected intent, optional course hint, nearby context, previous tutor state, and future image path metadata.
 
 The mock provider returns intent options for ambiguous `?` requests and concise rule-based tutor answers for explicit markers or selected intents.
+
+## Milestone 2 Provider Boundary
+
+Milestone 2 adds provider selection without enabling private local execution. The server can be configured with `TUTOR_PROVIDER=mock` or `TUTOR_PROVIDER=codex_private_local`.
+
+The `codex_private_local` provider is a design placeholder only. It may build intent, tutor, and check prompts from the request, but it must not:
+
+- Shell out to Codex or OpenClaw.
+- Read `~/.codex`, `~/.openclaw`, `.env`, `auth.json`, browser profiles, system credential stores, or private notes.
+- Inspect files outside the repository.
+- Persist study data, screenshots, frames, OCR logs, or session logs.
+
+The placeholder should return a clear not-implemented response until a later milestone explicitly defines and approves private local execution.
 
 ## Future iPad ReplayKit Capture
 
@@ -82,7 +95,7 @@ The tutor should be concise, concrete, and step-by-step. It should avoid giving 
 
 0. Repository and Mac server skeleton with health check.
 1. Mac-only mock tutor simulation with marker and intent behavior.
-2. Local provider integration design without using private auth files.
+2. Local provider integration design without using private auth files, shellout, or private filesystem inspection.
 3. Companion UI prototype for intent selection and tutor turns.
 4. Safe session state and privacy controls.
 5. Screen capture research spike with explicit privacy review.
