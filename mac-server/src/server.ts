@@ -47,7 +47,7 @@ const detectionSchema = z.object({
 const frameSchema = z
   .object({
     dataUrl: z.string().trim().refine(isBase64DataUrl).optional(),
-    imageBase64: z.string().trim().optional(),
+    imageBase64: z.string().trim().refine(isBase64Payload).optional(),
     filename: z.string().optional(),
     mimeType: z.string().optional(),
     regionText: z.string().trim().optional(),
@@ -62,7 +62,12 @@ const frameSchema = z
   });
 
 function isBase64DataUrl(value: string): boolean {
-  return /^data:[^;,]*;base64,[A-Za-z0-9+/]+={0,2}$/.test(value);
+  const match = value.match(/^data:[^;,]*;base64,([A-Za-z0-9+/]+={0,2})$/);
+  return Boolean(match?.[1] && isBase64Payload(match[1]));
+}
+
+function isBase64Payload(value: string): boolean {
+  return /^[A-Za-z0-9+/]+={0,2}$/.test(value) && value.length % 4 === 0;
 }
 
 const selectIntentSchema = z.object({

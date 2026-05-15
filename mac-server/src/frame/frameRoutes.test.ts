@@ -64,6 +64,18 @@ describe("frame routes", () => {
     assert.match(response.body.answer, /dataUrl is invalid/i);
   });
 
+  it("rejects invalid raw base64 frame payloads", async () => {
+    const response = await post("/frame", {
+      imageBase64: "not base64",
+      regionText: "FOLLOW(A) includes FIRST(B)",
+      marker: "?"
+    });
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.type, "error");
+    assert.match(response.body.answer, /imageBase64 is invalid/i);
+  });
+
   it("creates a detected question when manual region text and marker are supplied", async () => {
     const response = await post("/frame", {
       dataUrl: "data:text/plain;base64,aGVsbG8=",
