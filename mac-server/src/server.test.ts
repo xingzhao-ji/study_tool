@@ -232,6 +232,23 @@ describe("mac server", () => {
     assert.match(body.answer, /regionText is required/i);
   });
 
+  it("returns a clear validation error when regionText is blank", async () => {
+    const response = await fetch(`${baseUrl}/ask`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        regionText: "   ",
+        marker: "?",
+        courseHint: "CS 132 parsing"
+      })
+    });
+    const body = await response.json();
+
+    assert.equal(response.status, 400);
+    assert.equal(body.type, "error");
+    assert.match(body.answer, /regionText is required/i);
+  });
+
   it("returns a safe tutor answer for unknown markers", async () => {
     const response = await fetch(`${baseUrl}/ask`, {
       method: "POST",

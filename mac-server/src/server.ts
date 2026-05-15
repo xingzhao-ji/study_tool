@@ -18,11 +18,11 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.resolve(currentDir, "../public");
 
 const askSchema = z.object({
-  regionText: z.string().min(1),
-  marker: z.string().min(1),
-  selectedIntent: z.string().min(1).nullable().optional(),
-  courseHint: z.string().optional(),
-  nearbyContext: z.string().optional(),
+  regionText: z.string().trim().min(1),
+  marker: z.string().trim().min(1),
+  selectedIntent: z.string().trim().min(1).nullable().optional(),
+  courseHint: z.string().trim().optional(),
+  nearbyContext: z.string().trim().optional(),
   previousTutorState: z
     .array(
       z.object({
@@ -37,10 +37,10 @@ const askSchema = z.object({
 });
 
 const detectionSchema = z.object({
-  regionText: z.string().min(1),
-  marker: z.string().min(1),
-  courseHint: z.string().optional(),
-  nearbyContext: z.string().optional(),
+  regionText: z.string().trim().min(1),
+  marker: z.string().trim().min(1),
+  courseHint: z.string().trim().optional(),
+  nearbyContext: z.string().trim().optional(),
   confidence: z.number().min(0).max(1).optional()
 });
 
@@ -49,16 +49,16 @@ const frameSchema = z.object({
   imageBase64: z.string().optional(),
   filename: z.string().optional(),
   mimeType: z.string().optional(),
-  regionText: z.string().optional(),
-  marker: z.string().optional(),
-  courseHint: z.string().optional(),
-  nearbyContext: z.string().optional(),
+  regionText: z.string().trim().optional(),
+  marker: z.string().trim().optional(),
+  courseHint: z.string().trim().optional(),
+  nearbyContext: z.string().trim().optional(),
   confidence: z.number().min(0).max(1).optional()
 });
 
 const selectIntentSchema = z.object({
   questionId: z.string().optional(),
-  selectedIntent: z.string().min(1)
+  selectedIntent: z.string().trim().min(1)
 });
 
 export interface ServerOptions {
