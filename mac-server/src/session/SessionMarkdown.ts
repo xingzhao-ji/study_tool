@@ -27,13 +27,29 @@ function formatTurn(turn: TutorSessionTurn, index: number): string[] {
     titleParts.push(turn.selectedIntent);
   }
 
+  const metadata = [
+    `Created: ${turn.createdAt}`,
+    `Course: ${turn.courseHint || "none"}`
+  ];
+
+  if (turn.courseId) {
+    metadata.push(`Course ID: ${turn.courseId}`);
+  }
+
+  metadata.push(`Provider: ${turn.provider}`, `Confidence: ${formatConfidence(turn.confidence)}`);
+
+  if (turn.groundingStatus) {
+    metadata.push(`Grounding: ${turn.groundingStatus}`);
+  }
+
+  if (turn.nearbyContext) {
+    metadata.push(`Nearby context: ${turn.nearbyContext}`);
+  }
+
   const lines = [
     `## ${titleParts.join(" - ")}`,
     "",
-    `Created: ${turn.createdAt}`,
-    `Course: ${turn.courseHint || "none"}`,
-    `Provider: ${turn.provider}`,
-    `Confidence: ${formatConfidence(turn.confidence)}`,
+    ...metadata,
     "",
     "Boxed text:",
     "",
@@ -47,8 +63,14 @@ function formatTurn(turn: TutorSessionTurn, index: number): string[] {
     ""
   ];
 
-  if (turn.nearbyContext) {
-    lines.splice(7, 0, `Nearby context: ${turn.nearbyContext}`, "");
+  if (turn.sources?.length) {
+    lines.push("Sources:", "");
+
+    for (const source of turn.sources) {
+      lines.push(`- ${source.sourceLabel} (${source.chunkId})`);
+    }
+
+    lines.push("");
   }
 
   return lines;
