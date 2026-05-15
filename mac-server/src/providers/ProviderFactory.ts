@@ -9,7 +9,7 @@ export interface ProviderFactoryOptions {
 
 export interface TutorProviderDescriptor {
   name: TutorProviderName;
-  status: "available" | "not_implemented";
+  status: "available";
   description: string;
 }
 

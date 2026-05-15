@@ -9,7 +9,7 @@ describe("ProviderFactory", () => {
     assert.equal(createTutorProvider({ providerName: undefined }).name, "mock");
   });
 
-  it("creates the codex_private_local placeholder without reading private config", () => {
+  it("creates the codex_private_local provider without reading private config", () => {
     const provider = createTutorProvider({ providerName: "codex_private_local" });
 
     assert.equal(provider.name, "codex_private_local");
