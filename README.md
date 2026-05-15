@@ -12,11 +12,11 @@ This repository currently implements Milestones 0, 1, 2, and 3:
 - A local simulation script that exercises ambiguous intent selection and tutor answering.
 - A provider-selection boundary for `mock` and `codex_private_local`.
 - `GET /providers` for provider status and capability discovery.
-- A local browser companion UI for entering boxed text, selecting markers, choosing intent options, reusing prior turns, exporting Markdown notes, and viewing tutor history.
+- A local browser companion UI for entering boxed text, selecting markers, choosing intent options, reusing prior turns, checking follow-up work, exporting Markdown notes, and viewing tutor history.
 - A connection/status card for iPhone Safari and desktop browser use.
 - A safe manual screenshot/crop upload path that requires manually corrected text until OCR exists.
 - An opt-in `codex_private_local` provider that queues local `codex exec` calls and returns structured errors.
-- A user-triggered Codex status diagnostic that runs only `which codex` and `codex login status`.
+- A user-triggered Codex status diagnostic that runs only `which codex` and `codex login status`, with token-shaped output redacted before it reaches the UI.
 
 ## Setup
 
@@ -150,6 +150,8 @@ Check local Codex CLI readiness without reading auth files:
 curl http://localhost:3000/codex/status
 ```
 
+Token-shaped status text is redacted before the response is returned to the browser.
+
 ## Companion UI
 
 The browser UI is served by the Mac server and uses the same local endpoints:
@@ -164,9 +166,19 @@ The browser UI is served by the Mac server and uses the same local endpoints:
 - `GET /session`
 - `GET /session.md`
 - `POST /clear-session`
+- `POST /undo-last`
 - `POST /frame`
 
 It keeps tutor turns only in memory for the current page session. It can copy or download the current in-memory session as Markdown notes on request. It does not use browser storage, save screenshots by default, capture frames, run OCR, or read Goodnotes.
+
+Daily study controls:
+
+- A bare `?` scrolls to intent options instead of answering directly.
+- `check?` and `✓?` check work and include previous tutor context when used from `Check new work` or a prior history turn.
+- Answer quick actions include Hint, Next step, Why, Example, Simplify, Check new work, and Full solution.
+- `Reset form` clears the draft fields without clearing history.
+- `Clear session` asks for confirmation before wiping the in-memory session.
+- `Undo last` removes the latest tutor turn and restores the previous answer when available.
 
 The Connection card includes a `Check Codex` button. It performs only the allowed setup checks `which codex` and `codex login status`, then reports whether the local CLI appears ready. It does not inspect auth files.
 
@@ -194,6 +206,7 @@ Inspect or clear in-memory state:
 curl http://localhost:3000/latest
 curl http://localhost:3000/session
 curl http://localhost:3000/session.md
+curl -X POST http://localhost:3000/undo-last
 curl -X POST http://localhost:3000/clear-session
 ```
 

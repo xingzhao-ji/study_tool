@@ -44,7 +44,7 @@ The `codex_private_local` provider builds intent, tutor, and check prompts from 
 
 The provider uses a configurable timeout, defaults to 45 seconds, and queues calls so only one Codex request runs at a time. Tests use a fake command runner and must not require real Codex.
 
-The server also exposes an explicit Codex status diagnostic. It may run only `which codex` and `codex login status`, returns sanitized command/status output, and must not inspect auth files or private configuration directories.
+The server also exposes an explicit Codex status diagnostic. It may run only `which codex` and `codex login status`, returns sanitized command/status output, redacts token-shaped text, and must not inspect auth files or private configuration directories.
 
 ## Milestone 3 Companion UI
 
@@ -56,6 +56,8 @@ Milestone 3 adds a browser-based local companion UI served by the Mac server at 
 - Submit to the local `/ask` endpoint.
 - Choose an intent when the tutor returns `intent_options`.
 - View the latest tutor response and a short in-memory turn list.
+- Use quick answer actions for hint, next step, why, example, simplify, follow-up checking, and fuller solution requests.
+- Reset the draft form without clearing history, undo the latest turn, and clear the session only after confirmation.
 - Copy or download the current in-memory session as Markdown notes.
 - Upload a screenshot/crop manually, with OCR still requiring manually corrected text.
 - Run the explicit Codex readiness check from the Connection card.
@@ -81,6 +83,7 @@ Session endpoints:
 - `GET /session`: returns the full in-memory session.
 - `GET /session.md`: returns a Markdown note generated from the in-memory session.
 - `POST /clear-session`: clears in-memory detections and turns.
+- `POST /undo-last`: removes the latest detection/turn and restores the previous answer when available.
 - `POST /frame`: accepts a manual screenshot/crop payload and optional manual detected-question text.
 
 The first implementation is intentionally volatile and private. It does not persist session state to disk, and Markdown export is generated on request without writing files server-side.
