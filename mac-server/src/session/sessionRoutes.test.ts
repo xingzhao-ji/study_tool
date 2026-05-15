@@ -94,6 +94,21 @@ describe("session routes", () => {
     assert.equal(lastProviderRequest?.previousTutorState?.length, 1);
   });
 
+  it("stores active course settings in the session", async () => {
+    const settings = await post("/session/settings", {
+      activeCourseId: "course-1",
+      useCourseGrounding: true
+    });
+
+    assert.equal(settings.status, 200);
+    assert.equal(settings.body.session.activeCourseId, "course-1");
+    assert.equal(settings.body.session.useCourseGrounding, true);
+
+    const session = await get("/session");
+    assert.equal(session.body.activeCourseId, "course-1");
+    assert.equal(session.body.useCourseGrounding, true);
+  });
+
   it("undoes the latest detection and restores the previous answer", async () => {
     const response = await post("/undo-last", {});
 

@@ -101,6 +101,11 @@ const selectIntentSchema = z.object({
   selectedIntent: z.string().trim().min(1)
 });
 
+const sessionSettingsSchema = z.object({
+  activeCourseId: z.string().trim().min(1).nullable().optional(),
+  useCourseGrounding: z.boolean().optional()
+});
+
 const createCourseSchema = z.object({
   name: z.string().trim().min(1),
   description: z.string().trim().optional()
@@ -550,6 +555,24 @@ export function createApp(
 
   app.get("/session", (_request: Request, response: Response) => {
     response.json(stateStore.getSession());
+  });
+
+  app.post("/session/settings", (request: Request, response: Response) => {
+    const parsed = sessionSettingsSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      response.status(400).json({
+        type: "error",
+        answer: validationErrorAnswer("Invalid session settings body", parsed.error),
+        provider: provider.name,
+        raw: parsed.error.format()
+      });
+      return;
+    }
+
+    response.json({
+      session: stateStore.setCourseSettings(parsed.data)
+    });
   });
 
   app.get("/session.md", (_request: Request, response: Response) => {

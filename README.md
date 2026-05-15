@@ -220,6 +220,7 @@ The browser UI is served by the Mac server and currently uses these local endpoi
 - `POST /select-intent`
 - `GET /latest`
 - `GET /session`
+- `POST /session/settings`
 - `GET /session.md`
 - `POST /clear-session`
 - `POST /undo-last`
@@ -244,9 +245,10 @@ Daily study controls:
 
 - A bare `?` scrolls to intent options instead of answering directly.
 - `check?` and `✓?` check work and include previous tutor context when used from `Check new work` or a prior history turn.
+- The active course and `Use uploaded course material` toggle are remembered in the in-memory server session.
 - Answer quick actions include Hint, Next step, Why, Example, Simplify, Check new work, and Full solution.
 - `Reset form` clears the draft fields without clearing history.
-- `Clear session` asks for confirmation before wiping the in-memory session.
+- `Clear session` asks for confirmation before wiping the in-memory session history.
 - `Undo last` removes the latest tutor turn and restores the previous answer when available.
 
 The Connection card includes a `Check Codex` button. It performs only the allowed setup checks `which codex` and `codex login status`, then reports whether the local CLI appears ready. It does not inspect auth files.

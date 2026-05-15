@@ -22,6 +22,7 @@ Goodnotes Companion Tutor is currently a local Mac web app for simulating the fu
 5. The provider returns a concise `tutor_answer`.
 6. Later `check?` or `✓?` requests include compact previous tutor context when available.
 7. `GET /latest`, `GET /session`, and `GET /session.md` expose the current in-memory state.
+8. `POST /session/settings` remembers the active course and grounding toggle for the current server session.
 
 The non-negotiable rule is enforced by provider behavior and tests: a bare `?` returns intent options first and does not answer directly.
 

@@ -76,6 +76,17 @@ export async function runSmoke(log: LogFn = console.log): Promise<void> {
     assert.ok(courses.courses.some((candidate: { id: string }) => candidate.id === courseId));
     log("GET /courses -> includes course");
 
+    const settings = await jsonRequest(baseUrl, "POST /session/settings", "/session/settings", {
+      method: "POST",
+      body: {
+        activeCourseId: courseId,
+        useCourseGrounding: true
+      }
+    });
+    assert.equal(settings.session.activeCourseId, courseId);
+    assert.equal(settings.session.useCourseGrounding, true);
+    log("POST /session/settings -> course settings saved");
+
     const indexStatus = await jsonRequest(
       baseUrl,
       "GET /courses/:id/index-status",

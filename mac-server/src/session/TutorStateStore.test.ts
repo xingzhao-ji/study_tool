@@ -28,6 +28,23 @@ describe("InMemoryTutorStateStore", () => {
     assert.equal(store.getLatest(), null);
   });
 
+  it("remembers active course settings across session clears", () => {
+    const store = new InMemoryTutorStateStore("test-session");
+
+    store.setCourseSettings({
+      activeCourseId: "course-1",
+      useCourseGrounding: true
+    });
+
+    assert.equal(store.getSession().activeCourseId, "course-1");
+    assert.equal(store.getSession().useCourseGrounding, true);
+
+    store.clear();
+
+    assert.equal(store.getSession().activeCourseId, "course-1");
+    assert.equal(store.getSession().useCourseGrounding, true);
+  });
+
   it("undoes the latest detection and restores the previous answered turn", () => {
     const store = new InMemoryTutorStateStore("test-session");
     const first = store.addDetection({

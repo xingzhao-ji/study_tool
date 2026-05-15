@@ -38,6 +38,8 @@ export interface TutorSessionLatest {
 
 export interface TutorSession {
   id: string;
+  activeCourseId?: string;
+  useCourseGrounding?: boolean;
   detections: DetectedQuestion[];
   turns: TutorSessionTurn[];
   latest: TutorSessionLatest | null;
@@ -51,6 +53,11 @@ export interface DetectionInput {
   courseId?: string;
   useCourseGrounding?: boolean;
   confidence?: number;
+}
+
+export interface CourseSettingsInput {
+  activeCourseId?: string | null;
+  useCourseGrounding?: boolean;
 }
 
 export class InMemoryTutorStateStore {
@@ -74,6 +81,11 @@ export class InMemoryTutorStateStore {
   }
 
   addDetection(input: DetectionInput): DetectedQuestion {
+    this.setCourseSettings({
+      activeCourseId: input.courseId,
+      useCourseGrounding: input.courseId ? input.useCourseGrounding === true : undefined
+    });
+
     const detectedQuestion: DetectedQuestion = {
       id: randomUUID(),
       regionText: input.regionText,
@@ -88,6 +100,22 @@ export class InMemoryTutorStateStore {
 
     this.session.detections.push(detectedQuestion);
     return detectedQuestion;
+  }
+
+  setCourseSettings(input: CourseSettingsInput): TutorSession {
+    if (Object.hasOwn(input, "activeCourseId")) {
+      if (input.activeCourseId) {
+        this.session.activeCourseId = input.activeCourseId;
+      } else {
+        delete this.session.activeCourseId;
+      }
+    }
+
+    if (input.useCourseGrounding !== undefined) {
+      this.session.useCourseGrounding = input.useCourseGrounding;
+    }
+
+    return this.session;
   }
 
   recordResponse(detectedQuestion: DetectedQuestion, tutorResponse: TutorResponse): TutorSessionTurn | null {

@@ -228,6 +228,7 @@ async function loadSession() {
     }
 
     const session = await response.json();
+    applySessionSettings(session);
     sessionStatus.textContent = `Session ${shortId(session.id)}`;
     connectionSession.textContent = `${shortId(session.id)} · ${session.turns.length} turns`;
     renderSession(session);
@@ -326,6 +327,17 @@ function renderCourseSelect() {
   courseSelect.value = activeCourseId;
 }
 
+function applySessionSettings(session) {
+  if (typeof session.useCourseGrounding === "boolean") {
+    useCourseGrounding.checked = session.useCourseGrounding;
+  }
+
+  if (session.activeCourseId && session.activeCourseId !== activeCourseId) {
+    activeCourseId = session.activeCourseId;
+    renderCourseSelect();
+  }
+}
+
 function renderCourseFiles(files) {
   courseFiles.replaceChildren();
 
@@ -402,6 +414,7 @@ async function createCourse(event) {
     }
 
     activeCourseId = body.course.id;
+    await saveSessionSettings();
     newCourseName.value = "";
     newCourseDescription.value = "";
     await loadCourses();
@@ -458,6 +471,29 @@ async function uploadCourseFiles() {
     renderError(error.message || "The local tutor server could not upload course files.");
   } finally {
     uploadCourseFilesButton.disabled = false;
+  }
+}
+
+async function saveSessionSettings() {
+  if (pairingRequired && !paired) {
+    return;
+  }
+
+  try {
+    const response = await apiFetch("/session/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        activeCourseId: activeCourseId || null,
+        useCourseGrounding: Boolean(activeCourseId && useCourseGrounding.checked)
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error("settings failed");
+    }
+  } catch (error) {
+    activeCourseStatus.textContent = "Settings not saved";
   }
 }
 
@@ -602,9 +638,7 @@ function currentRequest() {
     request.courseId = activeCourseId;
   }
 
-  if (activeCourseId && useCourseGrounding.checked) {
-    request.useCourseGrounding = true;
-  }
+  request.useCourseGrounding = Boolean(activeCourseId && useCourseGrounding.checked);
 
   return request;
 }
@@ -1195,8 +1229,10 @@ reindexCourseButton.addEventListener("click", reindexActiveCourse);
 retrievalButton.addEventListener("click", previewRetrieval);
 courseSelect.addEventListener("change", async () => {
   activeCourseId = courseSelect.value;
+  await saveSessionSettings();
   await loadActiveCourseDetails();
 });
+useCourseGrounding.addEventListener("change", saveSessionSettings);
 
 showFullAnswer.addEventListener("click", () => {
   answerExpanded = !answerExpanded;

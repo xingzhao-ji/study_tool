@@ -159,6 +159,7 @@ describe("mac server", () => {
       "/codex/status",
       "/courses",
       "/session",
+      "/session/settings",
       "/session.md",
       "/simulate-detection",
       "/select-intent",
