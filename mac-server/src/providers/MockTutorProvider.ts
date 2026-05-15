@@ -44,7 +44,7 @@ export class MockTutorProvider implements TutorProvider {
         return "This works because FOLLOW tracks terminals that can appear immediately to the right of a nonterminal in some sentential form.";
       case "check?":
       case "✓?":
-        return "First issue to check: FOLLOW(A) does not include all of FIRST(B) automatically. It receives FIRST of the suffix after A, excluding ε, only when B or a sequence beginning with B follows A.";
+        return this.checkAnswer(request);
       case "err?":
         return "Likely mistake: treating FIRST(B) as always flowing into FOLLOW(A). That only happens when B is immediately after A, or begins the suffix after A, in a production.";
       case "full?":
@@ -80,6 +80,26 @@ export class MockTutorProvider implements TutorProvider {
     }
 
     return "FOLLOW(A) can receive FIRST(B) when A is immediately followed by B or by a sequence starting with B in some production. Add terminals from FIRST(B), but do not add ε. If the symbols after A can all vanish, then FOLLOW of the left-hand side can also flow into FOLLOW(A).";
+  }
+
+  private checkAnswer(request: TutorRequest): string {
+    const text = request.regionText.toLowerCase();
+    const hasPreviousTutorContext = (request.previousTutorState?.length ?? 0) > 0;
+    const contextLead = hasPreviousTutorContext ? "Using the previous tutor note: " : "";
+
+    if (text.includes("ε") || text.includes("epsilon")) {
+      return `${contextLead}First issue: FOLLOW sets should not contain ε. Add terminals from FIRST of the suffix, and if that suffix can vanish, add FOLLOW of the production's left-hand side instead.`;
+    }
+
+    if (/follow\s*\([^)]*\)\s*=\s*\{\s*\$?\s*\}/i.test(request.regionText)) {
+      return `${contextLead}First issue: this FOLLOW set is probably missing terminals from the suffix after the nonterminal. If B follows A, add FIRST(B) minus ε before deciding whether $ also belongs.`;
+    }
+
+    if (text.includes("follow") && text.includes("first")) {
+      return `${contextLead}First issue: make the condition explicit. Add FIRST of the suffix after A, excluding ε; FIRST(B) flows into FOLLOW(A) only when B starts that suffix in a production.`;
+    }
+
+    return `${contextLead}First issue to check: compare this line with the exact rule used in the previous step. Verify the condition, remove any impossible symbol, then keep only the next correction.`;
   }
 
   private confidenceFor(marker: string, selectedIntent?: string | null): number {

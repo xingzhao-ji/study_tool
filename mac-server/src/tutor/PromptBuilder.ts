@@ -30,6 +30,35 @@ function formatRequestContext(request: TutorRequest): string {
     `Marker: ${request.marker}`,
     `Selected intent: ${request.selectedIntent ?? "none"}`,
     `Course hint: ${request.courseHint ?? "none"}`,
-    `Nearby context: ${request.nearbyContext ?? "none"}`
+    `Nearby context: ${request.nearbyContext ?? "none"}`,
+    formatPreviousTutorState(request)
   ].join("\n");
+}
+
+function formatPreviousTutorState(request: TutorRequest): string {
+  const previousTurns = request.previousTutorState?.slice(-3) ?? [];
+
+  if (previousTurns.length === 0) {
+    return "Previous tutor context: none";
+  }
+
+  const lines = previousTurns.map((turn, index) => {
+    const marker = turn.marker || "none";
+    const intent = turn.selectedIntent ?? "none";
+    const region = compactLine(turn.regionText);
+    const answer = compactLine(turn.answer ?? "none");
+    return `${index + 1}. marker=${marker}; intent=${intent}; boxed=${region}; tutor=${answer}`;
+  });
+
+  return ["Previous tutor context:", ...lines].join("\n");
+}
+
+function compactLine(value: string): string {
+  const singleLine = value.replace(/\s+/g, " ").trim();
+
+  if (singleLine.length <= 220) {
+    return singleLine;
+  }
+
+  return `${singleLine.slice(0, 217)}...`;
 }
