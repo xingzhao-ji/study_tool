@@ -1,7 +1,12 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import express, { type Express, type Request, type Response } from "express";
 import { z } from "zod";
 import type { TutorProvider } from "./providers/TutorProvider.js";
 import { TUTOR_PROVIDER_DESCRIPTORS } from "./providers/ProviderFactory.js";
+
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const publicDir = path.resolve(currentDir, "../public");
 
 const askSchema = z.object({
   regionText: z.string().min(1),
@@ -25,6 +30,7 @@ const askSchema = z.object({
 export function createApp(provider: TutorProvider): Express {
   const app = express();
 
+  app.use(express.static(publicDir));
   app.use(express.json({ limit: "1mb" }));
 
   app.get("/health", (_request: Request, response: Response) => {

@@ -42,6 +42,33 @@ describe("mac server", () => {
     });
   });
 
+  it("serves the companion UI shell", async () => {
+    const response = await fetch(`${baseUrl}/`);
+    const body = await response.text();
+
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type") ?? "", /text\/html/);
+    assert.match(body, /Goodnotes Companion Tutor/);
+    assert.match(body, /id="regionText"/);
+    assert.match(body, /id="marker"/);
+    assert.match(body, /id="intentOptions"/);
+    assert.match(body, /id="turns"/);
+  });
+
+  it("serves companion UI assets", async () => {
+    const scriptResponse = await fetch(`${baseUrl}/app.js`);
+    const scriptBody = await scriptResponse.text();
+    const styleResponse = await fetch(`${baseUrl}/styles.css`);
+    const styleBody = await styleResponse.text();
+
+    assert.equal(scriptResponse.status, 200);
+    assert.equal(styleResponse.status, 200);
+    assert.match(scriptBody, /submitAsk/);
+    assert.match(scriptBody, /selectedIntent/);
+    assert.match(styleBody, /\.app-shell/);
+    assert.match(styleBody, /\.intent-options/);
+  });
+
   it("lists provider capabilities without enabling private local execution", async () => {
     const response = await fetch(`${baseUrl}/providers`);
     const body = await response.json();
@@ -53,7 +80,7 @@ describe("mac server", () => {
         {
           name: "mock",
           status: "available",
-          description: "Rule-based local mock tutor for Milestones 0-2."
+          description: "Rule-based local mock tutor for Milestones 0-3."
         },
         {
           name: "codex_private_local",

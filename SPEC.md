@@ -19,7 +19,7 @@ The long-term system has four conceptual parts:
 3. Companion UI: a future iPhone, iPad, or Mac interface asks for intent clarification and displays short tutor turns.
 4. Tutor provider: a local provider builds prompts and asks the selected model or local tool for step-by-step tutoring.
 
-Milestones 0-2 intentionally implement only a Mac-only mock tutor loop and provider integration boundary. There is no capture, OCR, image processing, PiP, iOS app, or Codex shellout yet.
+Milestones 0-3 intentionally implement only a Mac-only mock tutor loop, provider integration boundary, and local browser companion UI. There is no capture, OCR, image processing, PiP, iOS app, or Codex shellout yet.
 
 ## Current Mac-Only Loop
 
@@ -42,6 +42,19 @@ The `codex_private_local` provider is a design placeholder only. It may build in
 - Persist study data, screenshots, frames, OCR logs, or session logs.
 
 The placeholder should return a clear not-implemented response until a later milestone explicitly defines and approves private local execution.
+
+## Milestone 3 Companion UI
+
+Milestone 3 adds a browser-based local companion UI served by the Mac server at `/`. The UI lets the user:
+
+- Enter simulated boxed Goodnotes text.
+- Select or type a marker.
+- Add a course hint and nearby context.
+- Submit to the local `/ask` endpoint.
+- Choose an intent when the tutor returns `intent_options`.
+- View the latest tutor response and a short in-memory turn list.
+
+The UI is a prototype for the future companion surface. It must not capture the screen, read Goodnotes, run OCR, save study data, use browser storage, or invoke Codex.
 
 ## Future iPad ReplayKit Capture
 
@@ -115,6 +128,6 @@ The tutor should be concise, concrete, and step-by-step. It should avoid giving 
 ## Non-Goals
 
 - Replacing Goodnotes.
-- Building iOS, ReplayKit, OCR, image processing, PiP, iPhone companion, or Codex shellout in Milestones 0-1.
+- Building iOS, ReplayKit, OCR, image processing, PiP, iPhone companion, or Codex shellout in Milestones 0-3.
 - Sending private study data to remote services by default.
 - Building a full LMS or note-taking app.

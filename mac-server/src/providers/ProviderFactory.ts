@@ -16,7 +16,7 @@ export const TUTOR_PROVIDER_DESCRIPTORS: TutorProviderDescriptor[] = [
   {
     name: "mock",
     status: "available",
-    description: "Rule-based local mock tutor for Milestones 0-2."
+    description: "Rule-based local mock tutor for Milestones 0-3."
   },
   {
     name: "codex_private_local",

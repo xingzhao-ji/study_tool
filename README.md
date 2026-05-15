@@ -1,10 +1,10 @@
 # Goodnotes Companion Tutor
 
-Goodnotes Companion Tutor is a private personal-use AI study companion for tutoring around handwritten Goodnotes work. The current build is Mac-only and simulates the tutor loop plus a provider integration boundary without screen capture, OCR, image processing, iOS, ReplayKit, PiP, or Codex shellout.
+Goodnotes Companion Tutor is a private personal-use AI study companion for tutoring around handwritten Goodnotes work. The current build is Mac-only and provides a browser companion UI, mock tutor loop, and provider integration boundary without screen capture, OCR, image processing, iOS, ReplayKit, PiP, or Codex shellout.
 
 ## Current Milestone
 
-This repository currently implements Milestones 0, 1, and 2:
+This repository currently implements Milestones 0, 1, 2, and 3:
 
 - A TypeScript Mac server skeleton.
 - `GET /health` for service checks.
@@ -12,6 +12,7 @@ This repository currently implements Milestones 0, 1, and 2:
 - A local simulation script that exercises ambiguous intent selection and tutor answering.
 - A provider-selection boundary for `mock` and `codex_private_local`.
 - `GET /providers` for provider status and capability discovery.
+- A local browser companion UI for entering boxed text, selecting markers, choosing intent options, and viewing tutor turns.
 
 The Codex private local provider is intentionally not implemented yet. It only returns generated prompt metadata and a privacy-safe not-implemented response.
 
@@ -30,6 +31,12 @@ npm run dev
 ```
 
 The server listens on `http://localhost:3000` by default. You can override the port with `PORT`.
+
+Open the companion UI at:
+
+```text
+http://localhost:3000/
+```
 
 The mock provider is used by default. You can select the placeholder Codex provider with:
 
@@ -87,6 +94,16 @@ Expected provider names:
 }
 ```
 
+## Companion UI
+
+The browser UI is served by the Mac server and uses the same local endpoints:
+
+- `GET /health`
+- `GET /providers`
+- `POST /ask`
+
+It keeps tutor turns only in memory for the current page session. It does not use browser storage, save screenshots, capture frames, run OCR, or read Goodnotes.
+
 ## Example Tutor Request
 
 ```bash
@@ -100,6 +117,7 @@ When the marker is exactly `?` and no `selectedIntent` is provided, the mock tut
 ## Safety And Privacy Notes
 
 - This milestone does not read Goodnotes, capture the screen, process images, run OCR, or shell out to Codex.
+- The Milestone 3 UI stores tutor turns only in browser memory for the current open page.
 - The Milestone 2 provider boundary does not read `~/.codex`, `~/.openclaw`, environment auth files, browser profiles, or system credential stores.
 - Do not commit secrets, authentication files, screenshots, captured frames, OCR logs, local study data, or private session logs.
 - `.env`, `auth.json`, `.codex`, `.openclaw`, captured frame directories, log directories, screenshots, and local study data paths are ignored by Git.
