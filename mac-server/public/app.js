@@ -208,6 +208,7 @@ async function submitAsk() {
     }
 
     renderDetectionResult(body);
+    scrollToResults(body.tutorResponse?.type);
     await loadSession();
   } catch (error) {
     renderError("The local tutor server did not respond.");
@@ -257,10 +258,12 @@ async function uploadFrame(includeCurrentText = true) {
     if (body.type === "manual_text_required") {
       responseType.textContent = "Manual text required";
       answer.textContent = body.message;
+      scrollToResults("tutor_answer");
       return;
     }
 
     renderDetectionResult(body);
+    scrollToResults(body.tutorResponse?.type);
     await loadSession();
   } catch (error) {
     frameStatus.textContent = "Upload failed";
@@ -296,6 +299,7 @@ async function selectedIntent(option) {
     }
 
     renderDetectionResult(body);
+    scrollToResults(body.tutorResponse?.type);
     await loadSession();
   } catch (error) {
     renderError("The local tutor server did not respond.");
@@ -415,6 +419,11 @@ function renderDetectionResult(body) {
   detectionState.textContent = "Detected";
   renderCurrentQuestion(currentDetection);
   renderTutorResponse(body.tutorResponse);
+}
+
+function scrollToResults(responseKind) {
+  const target = responseKind === "intent_options" ? intentOptions : answer;
+  target.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderTutorResponse(body) {

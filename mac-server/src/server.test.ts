@@ -110,6 +110,7 @@ describe("mac server", () => {
     assert.match(scriptBody, /downloadSessionNotes/);
     assert.match(scriptBody, /undoLastTurn/);
     assert.match(scriptBody, /resetForm/);
+    assert.match(scriptBody, /scrollToResults/);
     assert.match(scriptBody, /Clear this tutor session history/);
     assert.match(scriptBody, /prepareFollowUpCheck/);
     assert.match(scriptBody, /Enter the new boxed work to check/);
