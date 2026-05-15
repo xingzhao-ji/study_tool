@@ -19,7 +19,7 @@ The long-term system has four conceptual parts:
 3. Companion UI: a future iPhone, iPad, or Mac interface asks for intent clarification and displays short tutor turns.
 4. Tutor provider: a local provider builds prompts and asks the selected model or local tool for step-by-step tutoring.
 
-Milestones 0-3 intentionally implement only a Mac-only mock tutor loop, provider integration boundary, and local browser companion UI. There is no capture, OCR, image processing, PiP, iOS app, or Codex shellout yet.
+The current Mac MVP implements a Mac-only tutor loop, provider integration boundary, opt-in local Codex CLI adapter, local browser companion UI, volatile session state, Markdown export, and manual frame upload. There is no automatic screen capture, OCR, image processing, PiP, or iOS app yet.
 
 ## Current Mac-Only Loop
 
@@ -27,8 +27,9 @@ The Mac server exposes:
 
 - `GET /health`: returns service and provider status.
 - `POST /ask`: accepts boxed region text, marker, optional selected intent, optional course hint, nearby context, previous tutor state, and future image path metadata.
+- Session endpoints for simulated detections, intent selection, latest state, full session state, Markdown export, clearing, and manual frame upload.
 
-The mock provider returns intent options for ambiguous `?` requests and concise rule-based tutor answers for explicit markers or selected intents.
+The mock provider returns intent options for ambiguous `?` requests and concise rule-based tutor answers for explicit markers or selected intents. It includes parsing-specific behavior for FIRST/FOLLOW work and generic fallback behavior for other subjects.
 
 ## Milestone 2 Provider Boundary
 
@@ -53,8 +54,10 @@ Milestone 3 adds a browser-based local companion UI served by the Mac server at 
 - Submit to the local `/ask` endpoint.
 - Choose an intent when the tutor returns `intent_options`.
 - View the latest tutor response and a short in-memory turn list.
+- Copy or download the current in-memory session as Markdown notes.
+- Upload a screenshot/crop manually, with OCR still requiring manually corrected text.
 
-The UI is a prototype for the future companion surface. It must not capture the screen, read Goodnotes, run OCR, save study data, use browser storage, or invoke Codex.
+The UI is a prototype for the future companion surface. It must not capture the screen, read Goodnotes, run OCR, save study data, or use browser storage. It invokes Codex only when the server was explicitly started with `TUTOR_PROVIDER=codex_private_local`.
 
 For iPhone Safari, the Mac server can bind to `HOST=0.0.0.0`. LAN mode requires a pairing token. If `PAIRING_TOKEN` is not provided, the server generates an in-memory token and prints it to the terminal. The web UI prompts for the token and stores it only in page memory.
 
@@ -73,10 +76,11 @@ Session endpoints:
 - `POST /select-intent`: applies the selected intent to a detected question and asks the active provider for an answer.
 - `GET /latest`: returns the latest detection and response.
 - `GET /session`: returns the full in-memory session.
+- `GET /session.md`: returns a Markdown note generated from the in-memory session.
 - `POST /clear-session`: clears in-memory detections and turns.
 - `POST /frame`: accepts a manual screenshot/crop payload and optional manual detected-question text.
 
-The first implementation is intentionally volatile and private. It does not persist session state to disk.
+The first implementation is intentionally volatile and private. It does not persist session state to disk, and Markdown export is generated on request without writing files server-side.
 
 ## Manual Frame Path
 
@@ -136,13 +140,13 @@ The tutor should be concise, concrete, and step-by-step. It should avoid giving 
 
 0. Repository and Mac server skeleton with health check.
 1. Mac-only mock tutor simulation with marker and intent behavior.
-2. Local provider integration design without using private auth files, shellout, or private filesystem inspection.
+2. Local provider integration design without using private auth files or private filesystem inspection.
 3. Companion UI prototype for intent selection and tutor turns.
-4. Safe session state and privacy controls.
-5. Screen capture research spike with explicit privacy review.
-6. Boxed-region and marker detection prototype.
-7. OCR integration prototype for handwritten region text.
-8. End-to-end local loop from captured region to tutor response.
+4. Safe session state, Markdown export, and privacy controls.
+5. Manual screenshot/crop upload before ReplayKit or OCR.
+6. Screen capture research spike with explicit privacy review.
+7. Boxed-region and marker detection prototype.
+8. OCR integration prototype for handwritten region text.
 9. Polish, reliability, packaging, and explicit opt-in diagnostics.
 
 ## Privacy And Security Rules
@@ -156,6 +160,6 @@ The tutor should be concise, concrete, and step-by-step. It should avoid giving 
 ## Non-Goals
 
 - Replacing Goodnotes.
-- Building iOS, ReplayKit, OCR, image processing, PiP, iPhone companion, or Codex shellout in Milestones 0-3.
+- Building native iOS, ReplayKit, OCR, image processing, or PiP before the Mac/web MVP is stable.
 - Sending private study data to remote services by default.
 - Building a full LMS or note-taking app.

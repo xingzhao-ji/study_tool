@@ -1,6 +1,6 @@
 # Goodnotes Companion Tutor
 
-Goodnotes Companion Tutor is a private personal-use AI study companion for tutoring around handwritten Goodnotes work. The current build is Mac-only and provides a browser companion UI, mock tutor loop, and provider integration boundary without screen capture, OCR, image processing, iOS, ReplayKit, PiP, or Codex shellout.
+Goodnotes Companion Tutor is a private personal-use AI study companion for tutoring around handwritten Goodnotes work. The current build is Mac-only and provides a browser companion UI, mock tutor loop, manual frame upload path, in-memory session history, and an opt-in local Codex CLI provider without screen capture, OCR, image processing, iOS, ReplayKit, or PiP.
 
 ## Current Milestone
 
@@ -12,10 +12,10 @@ This repository currently implements Milestones 0, 1, 2, and 3:
 - A local simulation script that exercises ambiguous intent selection and tutor answering.
 - A provider-selection boundary for `mock` and `codex_private_local`.
 - `GET /providers` for provider status and capability discovery.
-- A local browser companion UI for entering boxed text, selecting markers, choosing intent options, reusing prior turns, and viewing tutor history.
+- A local browser companion UI for entering boxed text, selecting markers, choosing intent options, reusing prior turns, exporting Markdown notes, and viewing tutor history.
 - A connection/status card for iPhone Safari and desktop browser use.
-
-The Codex private local provider is intentionally not implemented yet. It only returns generated prompt metadata and a privacy-safe not-implemented response.
+- A safe manual screenshot/crop upload path that requires manually corrected text until OCR exists.
+- An opt-in `codex_private_local` provider that queues local `codex exec` calls and returns structured errors.
 
 ## Setup
 
@@ -137,7 +137,7 @@ Expected provider names:
     },
     {
       "name": "codex_private_local",
-      "status": "not_implemented"
+      "status": "available"
     }
   ]
 }
@@ -154,10 +154,11 @@ The browser UI is served by the Mac server and uses the same local endpoints:
 - `POST /select-intent`
 - `GET /latest`
 - `GET /session`
+- `GET /session.md`
 - `POST /clear-session`
 - `POST /frame`
 
-It keeps tutor turns only in memory for the current page session. It does not use browser storage, save screenshots, capture frames, run OCR, or read Goodnotes.
+It keeps tutor turns only in memory for the current page session. It can copy or download the current in-memory session as Markdown notes on request. It does not use browser storage, save screenshots by default, capture frames, run OCR, or read Goodnotes.
 
 ## Session API
 
@@ -182,12 +183,13 @@ Inspect or clear in-memory state:
 ```bash
 curl http://localhost:3000/latest
 curl http://localhost:3000/session
+curl http://localhost:3000/session.md
 curl -X POST http://localhost:3000/clear-session
 ```
 
 ## Manual Frame Upload
 
-Before native ReplayKit or OCR exists, the MVP supports a safe manual frame path:
+Before native ReplayKit or OCR exists, the MVP supports a safe manual frame path. The web UI previews a selected screenshot/crop locally in the browser, then can upload either the frame alone or the frame with the manually corrected text fields:
 
 ```bash
 curl -X POST http://localhost:3000/frame \
@@ -221,9 +223,10 @@ When the marker is exactly `?` and no `selectedIntent` is provided, the mock tut
 
 ## Safety And Privacy Notes
 
-- This milestone does not read Goodnotes, capture the screen, process images, run OCR, or shell out to Codex.
+- This milestone does not read Goodnotes, capture the screen, process images, run OCR, or invoke Codex unless `TUTOR_PROVIDER=codex_private_local` is explicitly selected.
 - The Milestone 3 UI stores tutor turns only in browser memory for the current open page.
 - Session state is currently in memory only on the Mac server. Restarting the server clears it.
+- Markdown export is generated on request from in-memory session state. The server does not write session notes to disk.
 - LAN mode requires a pairing token for API routes. Static UI files are served so the browser can ask for the token, but tutor/session endpoints require the token.
 - Frame uploads are processed in memory by default. `SAVE_FRAMES=true` is opt-in and stores files only under ignored `data/frames/`.
 - The Codex provider adapter does not read `~/.codex`, `~/.openclaw`, environment auth files, browser profiles, or system credential stores. Runtime Codex calls are explicit opt-in via `TUTOR_PROVIDER=codex_private_local`.
@@ -234,4 +237,4 @@ When the marker is exactly `?` and no `selectedIntent` is provided, the mock tut
 ## Provider Status
 
 - `mock`: implemented and used by default.
-- `codex_private_local`: opt-in local Codex CLI provider. It queues requests with max concurrency 1, uses `codex exec --ephemeral`, applies a configurable timeout, and returns structured errors on timeout or bad output.
+- `codex_private_local`: implemented as an opt-in local Codex CLI provider. It queues requests with max concurrency 1, uses `codex exec --ephemeral`, applies a configurable timeout, strips common formatting artifacts, and returns structured errors on timeout, spawn failure, non-zero exit, or bad output.
