@@ -19,6 +19,9 @@ const detectionState = document.querySelector("#detectionState");
 const pairingPanel = document.querySelector("#pairingPanel");
 const pairingTokenInput = document.querySelector("#pairingToken");
 const pairButton = document.querySelector("#pairButton");
+const frameFile = document.querySelector("#frameFile");
+const uploadFrameButton = document.querySelector("#uploadFrameButton");
+const frameStatus = document.querySelector("#frameStatus");
 
 let pairingToken = "";
 let pairingRequired = false;
@@ -143,6 +146,53 @@ async function submitAsk() {
     renderError("The local tutor server did not respond.");
   } finally {
     askButton.disabled = false;
+  }
+}
+
+async function uploadFrame() {
+  if (!frameFile.files?.[0] || (pairingRequired && !paired)) {
+    return;
+  }
+
+  uploadFrameButton.disabled = true;
+  frameStatus.textContent = "Uploading";
+
+  try {
+    const dataUrl = await readFileAsDataUrl(frameFile.files[0]);
+    const request = currentRequest();
+    const response = await apiFetch("/frame", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        dataUrl,
+        filename: frameFile.files[0].name,
+        mimeType: frameFile.files[0].type,
+        ...request
+      })
+    });
+    const body = await response.json();
+
+    if (!response.ok) {
+      frameStatus.textContent = "Upload failed";
+      renderError(body.answer ?? "Frame upload failed.");
+      return;
+    }
+
+    frameStatus.textContent = body.frame?.saved ? "Frame saved" : "Frame processed";
+
+    if (body.type === "manual_text_required") {
+      responseType.textContent = "Manual text required";
+      answer.textContent = body.message;
+      return;
+    }
+
+    renderDetectionResult(body);
+    await loadSession();
+  } catch (error) {
+    frameStatus.textContent = "Upload failed";
+    renderError("The local tutor server did not accept the frame.");
+  } finally {
+    uploadFrameButton.disabled = false;
   }
 }
 
@@ -308,6 +358,8 @@ pairButton.addEventListener("click", async () => {
   startPolling();
 });
 
+uploadFrameButton.addEventListener("click", uploadFrame);
+
 for (const button of document.querySelectorAll("[data-marker]")) {
   button.addEventListener("click", () => {
     marker.value = button.dataset.marker;
@@ -327,3 +379,12 @@ for (const button of document.querySelectorAll("[data-quick-marker]")) {
 }
 
 loadPairingState();
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(reader.result));
+    reader.addEventListener("error", () => reject(reader.error));
+    reader.readAsDataURL(file);
+  });
+}

@@ -74,8 +74,15 @@ Session endpoints:
 - `GET /latest`: returns the latest detection and response.
 - `GET /session`: returns the full in-memory session.
 - `POST /clear-session`: clears in-memory detections and turns.
+- `POST /frame`: accepts a manual screenshot/crop payload and optional manual detected-question text.
 
 The first implementation is intentionally volatile and private. It does not persist session state to disk.
+
+## Manual Frame Path
+
+Before native ReplayKit or OCR, the server accepts a manual frame upload through `/frame`. If no manual `regionText` and `marker` are supplied, the response is `manual_text_required`. If manual text and marker are supplied, the server creates a detected question and follows the same tutor loop as `/simulate-detection`.
+
+By default, frames are processed in memory and not saved. `SAVE_FRAMES=true` explicitly enables saving under ignored `data/frames/`.
 
 ## Future iPad ReplayKit Capture
 

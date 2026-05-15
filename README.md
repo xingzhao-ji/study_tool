@@ -154,6 +154,7 @@ The browser UI is served by the Mac server and uses the same local endpoints:
 - `GET /latest`
 - `GET /session`
 - `POST /clear-session`
+- `POST /frame`
 
 It keeps tutor turns only in memory for the current page session. It does not use browser storage, save screenshots, capture frames, run OCR, or read Goodnotes.
 
@@ -183,6 +184,30 @@ curl http://localhost:3000/session
 curl -X POST http://localhost:3000/clear-session
 ```
 
+## Manual Frame Upload
+
+Before native ReplayKit or OCR exists, the MVP supports a safe manual frame path:
+
+```bash
+curl -X POST http://localhost:3000/frame \
+  -H "Content-Type: application/json" \
+  -d '{"dataUrl":"data:text/plain;base64,aGVsbG8="}'
+```
+
+Without manual `regionText` and `marker`, `/frame` returns `manual_text_required`. With manual text, it creates the same detected-question flow as `/simulate-detection`:
+
+```bash
+curl -X POST http://localhost:3000/frame \
+  -H "Content-Type: application/json" \
+  -d '{"dataUrl":"data:text/plain;base64,aGVsbG8=","regionText":"FOLLOW(A) includes FIRST(B)","marker":"?","courseHint":"CS 132 parsing"}'
+```
+
+Uploaded frames are not saved by default. To save them under ignored `data/frames/`:
+
+```bash
+SAVE_FRAMES=true npm run dev
+```
+
 ## Example Tutor Request
 
 ```bash
@@ -199,6 +224,7 @@ When the marker is exactly `?` and no `selectedIntent` is provided, the mock tut
 - The Milestone 3 UI stores tutor turns only in browser memory for the current open page.
 - Session state is currently in memory only on the Mac server. Restarting the server clears it.
 - LAN mode requires a pairing token for API routes. Static UI files are served so the browser can ask for the token, but tutor/session endpoints require the token.
+- Frame uploads are processed in memory by default. `SAVE_FRAMES=true` is opt-in and stores files only under ignored `data/frames/`.
 - The Codex provider adapter does not read `~/.codex`, `~/.openclaw`, environment auth files, browser profiles, or system credential stores. Runtime Codex calls are explicit opt-in via `TUTOR_PROVIDER=codex_private_local`.
 - Do not commit secrets, authentication files, screenshots, captured frames, OCR logs, local study data, or private session logs.
 - `.env`, `auth.json`, `.codex`, `.openclaw`, captured frame directories, log directories, screenshots, and local study data paths are ignored by Git.

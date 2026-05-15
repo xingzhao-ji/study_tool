@@ -78,6 +78,21 @@
 
         <section class="control-card">
           <div class="panel-heading">
+            <h2>Manual Frame Upload</h2>
+            <span id="frameStatus">No frame</span>
+          </div>
+          <div class="field-group">
+            <label for="frameFile">Screenshot or crop</label>
+            <input id="frameFile" type="file" accept="image/*">
+          </div>
+          <div class="action-row">
+            <button id="uploadFrameButton" type="button">Upload with current text</button>
+          </div>
+          <p class="note-text">OCR is not implemented yet. Use the boxed text and marker fields above to correct the detected question.</p>
+        </section>
+
+        <section class="control-card">
+          <div class="panel-heading">
             <h2>Current Detected Question</h2>
             <span id="currentConfidence">No detection</span>
           </div>

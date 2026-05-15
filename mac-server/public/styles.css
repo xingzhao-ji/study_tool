@@ -268,8 +268,18 @@ button:focus-visible {
 }
 
 .detected-text,
-.turn-region {
+.turn-region,
+.note-text {
   margin-bottom: 0;
+}
+
+.note-text {
+  color: var(--muted);
+  line-height: 1.42;
+}
+
+.detected-text,
+.turn-region {
   color: var(--ink);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }

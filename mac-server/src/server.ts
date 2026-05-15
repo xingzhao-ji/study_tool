@@ -10,6 +10,7 @@ import {
   type DetectionInput
 } from "./session/TutorStateStore.js";
 import type { PairingConfig } from "./security/Pairing.js";
+import { FrameStore } from "./frame/FrameStore.js";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.resolve(currentDir, "../public");
@@ -41,6 +42,18 @@ const detectionSchema = z.object({
   confidence: z.number().min(0).max(1).optional()
 });
 
+const frameSchema = z.object({
+  dataUrl: z.string().optional(),
+  imageBase64: z.string().optional(),
+  filename: z.string().optional(),
+  mimeType: z.string().optional(),
+  regionText: z.string().optional(),
+  marker: z.string().optional(),
+  courseHint: z.string().optional(),
+  nearbyContext: z.string().optional(),
+  confidence: z.number().min(0).max(1).optional()
+});
+
 const selectIntentSchema = z.object({
   questionId: z.string().optional(),
   selectedIntent: z.string().min(1)
@@ -48,6 +61,7 @@ const selectIntentSchema = z.object({
 
 export interface ServerOptions {
   pairing?: PairingConfig;
+  frameStore?: FrameStore;
 }
 
 export function createApp(
@@ -56,9 +70,10 @@ export function createApp(
   options: ServerOptions = {}
 ): Express {
   const app = express();
+  const frameStore = options.frameStore ?? new FrameStore({ saveFrames: false });
 
   app.use(express.static(publicDir));
-  app.use(express.json({ limit: "1mb" }));
+  app.use(express.json({ limit: "12mb" }));
 
   app.get("/pairing", (_request: Request, response: Response) => {
     response.json({
@@ -143,21 +158,58 @@ export function createApp(
     }
 
     try {
-      const detectedQuestion = stateStore.addDetection(parsed.data as DetectionInput);
-      const previousTutorState = stateStore.previousTutorState();
-      const tutorResponse = await provider.ask(
-        requestFromDetection(detectedQuestion, previousTutorState)
-      );
-      stateStore.recordResponse(detectedQuestion, tutorResponse);
-      response.json({
-        sessionId: stateStore.getSession().id,
-        detectedQuestion,
-        tutorResponse
-      });
+      response.json(await runDetection(parsed.data as DetectionInput));
     } catch (error) {
       response.status(500).json({
         type: "error",
         answer: "Tutor provider failed while handling the simulated detection.",
+        provider: provider.name,
+        raw: error instanceof Error ? error.message : error
+      });
+    }
+  });
+
+  app.post("/frame", async (request: Request, response: Response) => {
+    const parsed = frameSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      response.status(400).json({
+        type: "error",
+        answer: "Invalid frame request body.",
+        provider: provider.name,
+        raw: parsed.error.format()
+      });
+      return;
+    }
+
+    try {
+      const frame = await frameStore.store(parsed.data);
+
+      if (!parsed.data.regionText || !parsed.data.marker) {
+        response.json({
+          type: "manual_text_required",
+          message: "Frame received. OCR is not implemented yet, so manual region text and marker are required.",
+          frame
+        });
+        return;
+      }
+
+      const detectionResult = await runDetection({
+        regionText: parsed.data.regionText,
+        marker: parsed.data.marker,
+        courseHint: parsed.data.courseHint,
+        nearbyContext: parsed.data.nearbyContext,
+        confidence: parsed.data.confidence ?? 0.8
+      });
+
+      response.json({
+        ...detectionResult,
+        frame
+      });
+    } catch (error) {
+      response.status(500).json({
+        type: "error",
+        answer: "Frame upload failed.",
         provider: provider.name,
         raw: error instanceof Error ? error.message : error
       });
@@ -235,6 +287,21 @@ export function createApp(
       session: stateStore.clear()
     });
   });
+
+  async function runDetection(input: DetectionInput) {
+    const detectedQuestion = stateStore.addDetection(input);
+    const previousTutorState = stateStore.previousTutorState();
+    const tutorResponse = await provider.ask(
+      requestFromDetection(detectedQuestion, previousTutorState)
+    );
+    stateStore.recordResponse(detectedQuestion, tutorResponse);
+
+    return {
+      sessionId: stateStore.getSession().id,
+      detectedQuestion,
+      tutorResponse
+    };
+  }
 
   return app;
 }
