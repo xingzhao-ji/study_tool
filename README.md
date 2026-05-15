@@ -67,7 +67,7 @@ HOST=0.0.0.0 PORT=3000 PAIRING_TOKEN=choose-a-local-token npm run dev
 
 If `PAIRING_TOKEN` is missing in LAN mode, the server generates an in-memory token and prints it in the terminal. The browser UI asks for the token and keeps it only in page memory.
 
-The mock provider is used by default. You can select the placeholder Codex provider with:
+The mock provider is used by default. You can select the opt-in local Codex provider with:
 
 ```bash
 cd mac-server
