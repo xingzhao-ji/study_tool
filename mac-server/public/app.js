@@ -43,6 +43,8 @@ let currentDetection = null;
 let pollTimer = null;
 let currentAnswerText = "";
 let answerExpanded = false;
+let latestTutorTurn = null;
+let draftingFollowUpCheck = false;
 
 async function apiFetch(path, options = {}) {
   const headers = new Headers(options.headers ?? {});
@@ -184,6 +186,7 @@ async function submitAsk() {
     return;
   }
 
+  draftingFollowUpCheck = false;
   askButton.disabled = true;
   detectionState.textContent = "Submitting";
   clearIntentOptions();
@@ -359,6 +362,7 @@ async function downloadSessionNotes() {
 }
 
 function renderDetectionResult(body) {
+  draftingFollowUpCheck = false;
   currentDetection = body.detectedQuestion;
   detectionState.textContent = "Detected";
   renderCurrentQuestion(currentDetection);
@@ -403,6 +407,10 @@ function clearIntentOptions() {
 function renderSession(session) {
   renderTurns(session.turns ?? []);
 
+  if (draftingFollowUpCheck && marker.value === "check?" && !regionText.value.trim()) {
+    return;
+  }
+
   if (session.latest) {
     currentDetection = session.latest.detectedQuestion;
     renderCurrentQuestion(session.latest.detectedQuestion);
@@ -433,6 +441,7 @@ function renderCurrentQuestion(detection) {
 function renderTurns(sessionTurns) {
   turns.replaceChildren();
   turnCount.textContent = String(sessionTurns.length);
+  latestTutorTurn = sessionTurns.length > 0 ? sessionTurns[sessionTurns.length - 1] : null;
 
   for (const turn of sessionTurns) {
     const item = document.createElement("li");
@@ -461,7 +470,7 @@ function renderTurns(sessionTurns) {
     const check = document.createElement("button");
     check.type = "button";
     check.textContent = "Check follow-up";
-    check.addEventListener("click", () => reuseTurn(turn, "check?"));
+    check.addEventListener("click", () => prepareFollowUpCheck(turn));
 
     actions.append(reuse, check);
     item.append(meta, prompt, reply, actions);
@@ -470,11 +479,47 @@ function renderTurns(sessionTurns) {
 }
 
 function reuseTurn(turn, nextMarker = turn.marker) {
+  draftingFollowUpCheck = false;
   regionText.value = turn.regionText ?? "";
+  regionText.placeholder = "";
   marker.value = nextMarker;
   courseHint.value = turn.courseHint ?? courseHint.value;
   nearbyContext.value = turn.nearbyContext ?? "";
   regionText.focus();
+}
+
+function prepareFollowUpCheck(turn = latestTutorTurn) {
+  draftingFollowUpCheck = true;
+  marker.value = "check?";
+  regionText.value = "";
+  regionText.placeholder = "Enter the new boxed work to check";
+  detectionState.textContent = "Enter new work";
+  responseType.textContent = "Ready to check";
+  clearIntentOptions();
+
+  if (turn?.courseHint) {
+    courseHint.value = turn.courseHint;
+  }
+
+  if (turn) {
+    nearbyContext.value = [
+      `Previous boxed work: ${compactForContext(turn.regionText ?? "")}`,
+      `Previous tutor answer: ${compactForContext(turn.answer ?? "")}`
+    ].filter((line) => !line.endsWith(": ")).join("\n");
+  }
+
+  renderAnswerText("Enter the new boxed work to check, then tap Simulate.");
+  regionText.focus();
+}
+
+function compactForContext(value) {
+  const singleLine = String(value).replace(/\s+/g, " ").trim();
+
+  if (singleLine.length <= 180) {
+    return singleLine;
+  }
+
+  return `${singleLine.slice(0, 177)}...`;
 }
 
 function renderError(message) {
@@ -521,6 +566,7 @@ form.addEventListener("submit", (event) => {
 clearButton.addEventListener("click", async () => {
   await apiFetch("/clear-session", { method: "POST" });
   currentDetection = null;
+  draftingFollowUpCheck = false;
   clearIntentOptions();
   detectionState.textContent = "Ready";
   answerExpanded = false;
@@ -572,9 +618,10 @@ for (const button of document.querySelectorAll("[data-quick-marker]")) {
   button.addEventListener("click", () => {
     marker.value = button.dataset.quickMarker;
     if (button.dataset.quickMarker === "check?") {
-      regionText.focus();
+      prepareFollowUpCheck();
       return;
     }
+    draftingFollowUpCheck = false;
     submitAsk();
   });
 }

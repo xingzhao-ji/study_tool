@@ -102,6 +102,9 @@ describe("mac server", () => {
     assert.match(scriptBody, /checkCodexStatus/);
     assert.match(scriptBody, /copySessionNotes/);
     assert.match(scriptBody, /downloadSessionNotes/);
+    assert.match(scriptBody, /prepareFollowUpCheck/);
+    assert.match(scriptBody, /Enter the new boxed work to check/);
+    assert.match(scriptBody, /draftingFollowUpCheck/);
     assert.match(styleBody, /\.app-shell/);
     assert.match(styleBody, /\.intent-options/);
     assert.match(styleBody, /\.history-actions/);
