@@ -4,6 +4,7 @@ const marker = document.querySelector("#marker");
 const courseHint = document.querySelector("#courseHint");
 const nearbyContext = document.querySelector("#nearbyContext");
 const askButton = document.querySelector("#askButton");
+const resetFormButton = document.querySelector("#resetFormButton");
 const clearButton = document.querySelector("#clearButton");
 const answer = document.querySelector("#answer");
 const answerControls = document.querySelector("#answerControls");
@@ -569,6 +570,25 @@ function compactForContext(value) {
   return `${singleLine.slice(0, 177)}...`;
 }
 
+function resetForm() {
+  draftingFollowUpCheck = false;
+  regionText.value = "";
+  regionText.placeholder = "";
+  marker.value = "?";
+  nearbyContext.value = "";
+  clearIntentOptions();
+  detectionState.textContent = "Ready";
+
+  if (frameFile.files?.length) {
+    frameFile.value = "";
+  }
+
+  framePreview.hidden = true;
+  framePreview.removeAttribute("src");
+  frameStatus.textContent = "No frame";
+  regionText.focus();
+}
+
 function renderError(message) {
   responseType.textContent = "Error";
   renderAnswerText(message);
@@ -611,6 +631,10 @@ form.addEventListener("submit", (event) => {
 });
 
 clearButton.addEventListener("click", async () => {
+  if (!window.confirm("Clear this tutor session history?")) {
+    return;
+  }
+
   await apiFetch("/clear-session", { method: "POST" });
   currentDetection = null;
   draftingFollowUpCheck = false;
@@ -621,6 +645,8 @@ clearButton.addEventListener("click", async () => {
   responseType.textContent = "Ready";
   await loadSession();
 });
+
+resetFormButton.addEventListener("click", resetForm);
 
 showFullAnswer.addEventListener("click", () => {
   answerExpanded = !answerExpanded;
