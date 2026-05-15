@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.json",
     "test": "mkdir -p .tmp && TMPDIR=$PWD/.tmp tsx --test src/*.test.ts src/**/*.test.ts",
     "test:codex-provider": "mkdir -p .tmp && TMPDIR=$PWD/.tmp node --import tsx --test src/providers/CodexPrivateLocalProvider.test.ts",
+    "smoke": "mkdir -p .tmp && TMPDIR=$PWD/.tmp node --import tsx src/scripts/smoke.ts",
     "simulate": "mkdir -p .tmp && TMPDIR=$PWD/.tmp node --import tsx src/scripts/simulate.ts"
   },
   "dependencies": {

@@ -9,9 +9,12 @@ cd mac-server
 npm test
 npm run build
 npm run simulate
+npm run smoke
 ```
 
 Run this gate before committing source, UI, provider, session, or docs changes.
+
+`npm run smoke` starts the Express app on an ephemeral localhost port and exercises the MVP HTTP flow without requiring a long-running dev server.
 
 ## Provider Tests
 

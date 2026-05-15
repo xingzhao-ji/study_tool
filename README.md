@@ -53,6 +53,7 @@ cd mac-server
 npm test
 npm run build
 npm run simulate
+npm run smoke
 ```
 
 Provider-specific tests use a fake command runner and do not call real Codex:
