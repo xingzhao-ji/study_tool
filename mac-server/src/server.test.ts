@@ -85,6 +85,8 @@ describe("mac server", () => {
     assert.match(body, /id="copyAnswerButton"/);
     assert.match(body, /id="downloadSessionButton"/);
     assert.match(body, /id="undoLastButton"/);
+    assert.match(body, /data-quick-marker="simplify\?"/);
+    assert.match(body, /data-quick-marker="ex\?"/);
     assert.match(body, /id="intentOptions"/);
     assert.match(body, /id="turns"/);
   });
