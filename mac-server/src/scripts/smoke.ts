@@ -46,6 +46,10 @@ export async function runSmoke(log: LogFn = console.log): Promise<void> {
     const courseId = course.course.id;
     log("POST /courses -> course created");
 
+    const fetchedCourse = await jsonRequest(baseUrl, "GET /courses/:id", `/courses/${courseId}`);
+    assert.equal(fetchedCourse.course.id, courseId);
+    log("GET /courses/:id -> course loaded");
+
     const uploaded = await jsonRequest(baseUrl, "POST /courses/:id/files", `/courses/${courseId}/files`, {
       method: "POST",
       body: {
@@ -221,6 +225,12 @@ export async function runSmoke(log: LogFn = console.log): Promise<void> {
     assert.equal(cleared.session.latest, null);
     assert.equal(cleared.session.turns.length, 0);
     log("POST /clear-session -> reset");
+
+    const deletedCourse = await jsonRequest(baseUrl, "DELETE /courses/:id", `/courses/${courseId}`, {
+      method: "DELETE"
+    });
+    assert.equal(deletedCourse.deleted, true);
+    log("DELETE /courses/:id -> course removed");
 
     log("Smoke test passed");
   } finally {
