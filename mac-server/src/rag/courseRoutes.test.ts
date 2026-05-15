@@ -107,6 +107,16 @@ describe("course RAG routes", () => {
     assert.equal(groundedAnswer.body.sources.length, 1);
     assert.equal(groundedAnswer.body.sources[0].fileId, uploaded.body.file.id);
     assert.match(groundedAnswer.body.answer, /uploaded course material/i);
+
+    const deleted = await jsonRequest("DELETE", `/courses/${courseId}/files/${uploaded.body.file.id}`);
+    assert.equal(deleted.status, 200);
+    assert.equal(deleted.body.deleted, true);
+
+    const afterDelete = await jsonRequest("POST", `/courses/${courseId}/retrieve`, {
+      query: "FOLLOW(A) includes FIRST(B)",
+      topK: 5
+    });
+    assert.equal(afterDelete.body.chunks.length, 0);
   });
 
   async function jsonRequest(method: string, route: string, body?: unknown) {

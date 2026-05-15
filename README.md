@@ -233,6 +233,7 @@ The UI also uses these course material endpoints:
 - `DELETE /courses/:courseId`
 - `POST /courses/:courseId/files`
 - `GET /courses/:courseId/files`
+- `DELETE /courses/:courseId/files/:fileId`
 - `GET /courses/:courseId/index-status`
 - `POST /courses/:courseId/retrieve`
 

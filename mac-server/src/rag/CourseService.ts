@@ -26,6 +26,7 @@ export interface CourseService {
   deleteCourse(courseId: string): Promise<boolean>;
   listFiles(courseId: string): Promise<CourseFile[]>;
   addTextFile(courseId: string, input: AddTextFileInput): Promise<CourseFile>;
+  deleteFile(courseId: string, fileId: string): Promise<boolean>;
   indexStatus(courseId: string): Promise<CourseIndexStatus>;
   retrieve(courseId: string, input: RetrieveInput): Promise<RetrievedChunk[]>;
 }
@@ -183,6 +184,28 @@ export class LocalCourseService implements CourseService {
     course.updatedAt = new Date().toISOString();
     await this.saveState();
     return file;
+  }
+
+  async deleteFile(courseId: string, fileId: string): Promise<boolean> {
+    const state = await this.loadState();
+    const file = state.files.find((candidate) => candidate.courseId === courseId && candidate.id === fileId);
+
+    if (!file) {
+      return false;
+    }
+
+    state.files = state.files.filter((candidate) => candidate.id !== fileId);
+    state.chunks = state.chunks.filter((chunk) => chunk.fileId !== fileId);
+
+    const course = state.courses.find((candidate) => candidate.id === courseId);
+    if (course) {
+      course.updatedAt = new Date().toISOString();
+    }
+
+    await rm(file.storedPath, { force: true });
+    await rm(path.join(this.extractedTextDir, courseId, `${fileId}.jsonl`), { force: true });
+    await this.saveState();
+    return true;
   }
 
   async indexStatus(courseId: string): Promise<CourseIndexStatus> {

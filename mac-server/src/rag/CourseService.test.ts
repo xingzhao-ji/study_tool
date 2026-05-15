@@ -85,6 +85,35 @@ describe("LocalCourseService", () => {
     assert.equal(calculusResults.length, 0);
   });
 
+  it("deletes an uploaded course file and removes its indexed chunks", async () => {
+    const course = await service.createCourse({ name: "Parsing" });
+    const file = await service.addTextFile(course.id, {
+      originalName: "follow.txt",
+      mimeType: "text/plain",
+      text: "FOLLOW(A) receives FIRST(beta) except epsilon."
+    });
+
+    const beforeDelete = await service.retrieve(course.id, {
+      query: "FOLLOW FIRST epsilon",
+      topK: 5
+    });
+    assert.equal(beforeDelete.length, 1);
+
+    const deleted = await service.deleteFile(course.id, file.id);
+    assert.equal(deleted, true);
+
+    const files = await service.listFiles(course.id);
+    const afterDelete = await service.retrieve(course.id, {
+      query: "FOLLOW FIRST epsilon",
+      topK: 5
+    });
+    const status = await service.indexStatus(course.id);
+
+    assert.equal(files.length, 0);
+    assert.equal(afterDelete.length, 0);
+    assert.equal(status.chunkCount, 0);
+  });
+
   it("marks pdf files as needs_ocr until local pdf text extraction is available", async () => {
     const course = await service.createCourse({ name: "Scanned textbook" });
 

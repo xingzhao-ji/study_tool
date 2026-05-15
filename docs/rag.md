@@ -15,6 +15,8 @@ Goodnotes Companion Tutor now has a local retrieval path for course material. It
 
 The server never sends an entire textbook or uploaded course file to a tutor provider.
 
+Delete an uploaded file with `DELETE /courses/:courseId/files/:fileId`. This removes the stored original, extracted text record, and indexed chunks for that file.
+
 ## Grounding Policy
 
 Course-grounded answers follow this priority:

@@ -301,6 +301,32 @@ export function createApp(
     }
   });
 
+  app.delete("/courses/:courseId/files/:fileId", async (request: Request, response: Response) => {
+    const course = await courseService.getCourse(request.params.courseId);
+
+    if (!course) {
+      response.status(404).json({
+        type: "error",
+        answer: `Course "${request.params.courseId}" was not found.`,
+        provider: provider.name
+      });
+      return;
+    }
+
+    const deleted = await courseService.deleteFile(request.params.courseId, request.params.fileId);
+
+    if (!deleted) {
+      response.status(404).json({
+        type: "error",
+        answer: `Course file "${request.params.fileId}" was not found.`,
+        provider: provider.name
+      });
+      return;
+    }
+
+    response.json({ deleted: true });
+  });
+
   app.get("/courses/:courseId/index-status", async (request: Request, response: Response) => {
     const course = await courseService.getCourse(request.params.courseId);
 
