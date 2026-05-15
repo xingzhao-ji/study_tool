@@ -56,6 +56,8 @@ Milestone 3 adds a browser-based local companion UI served by the Mac server at 
 
 The UI is a prototype for the future companion surface. It must not capture the screen, read Goodnotes, run OCR, save study data, use browser storage, or invoke Codex.
 
+For iPhone Safari, the Mac server can bind to `HOST=0.0.0.0`. LAN mode requires a pairing token. If `PAIRING_TOKEN` is not provided, the server generates an in-memory token and prints it to the terminal. The web UI prompts for the token and stores it only in page memory.
+
 ## Session State
 
 The Mac server stores one in-memory tutor session by default. It tracks:

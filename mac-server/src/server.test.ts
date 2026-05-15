@@ -69,6 +69,13 @@ describe("mac server", () => {
     assert.match(styleBody, /\.intent-options/);
   });
 
+  it("allows localhost mode without pairing", async () => {
+    const response = await fetch(`${baseUrl}/pairing`);
+    const body = await response.json();
+
+    assert.deepEqual(body, { required: false });
+  });
+
   it("lists provider capabilities without enabling private local execution", async () => {
     const response = await fetch(`${baseUrl}/providers`);
     const body = await response.json();
@@ -134,5 +141,46 @@ describe("mac server", () => {
     assert.equal(body.provider, "mock");
     assert.equal(body.confidence, 0.8);
     assert.match(body.answer, /FOLLOW\(A\) can receive FIRST\(B\)/);
+  });
+});
+
+describe("pairing-protected server", () => {
+  let server: Server;
+  let baseUrl: string;
+
+  before(async () => {
+    const app = createApp(new MockTutorProvider(), undefined, {
+      pairing: { required: true, token: "secret-token", generated: false }
+    });
+    server = await new Promise<Server>((resolve) => {
+      const listener = app.listen(0, () => resolve(listener));
+    });
+    const address = server.address() as AddressInfo;
+    baseUrl = `http://127.0.0.1:${address.port}`;
+  });
+
+  after(async () => {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
+  });
+
+  it("requires a pairing token for API routes when enabled", async () => {
+    const rejected = await fetch(`${baseUrl}/health`);
+    const accepted = await fetch(`${baseUrl}/health`, {
+      headers: { "x-pairing-token": "secret-token" }
+    });
+
+    assert.equal(rejected.status, 401);
+    assert.equal(accepted.status, 200);
+    assert.deepEqual(await fetch(`${baseUrl}/pairing`).then((response) => response.json()), {
+      required: true
+    });
   });
 });

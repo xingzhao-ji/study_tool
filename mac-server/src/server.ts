@@ -9,6 +9,7 @@ import {
   requestFromDetection,
   type DetectionInput
 } from "./session/TutorStateStore.js";
+import type { PairingConfig } from "./security/Pairing.js";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.resolve(currentDir, "../public");
@@ -45,14 +46,47 @@ const selectIntentSchema = z.object({
   selectedIntent: z.string().min(1)
 });
 
+export interface ServerOptions {
+  pairing?: PairingConfig;
+}
+
 export function createApp(
   provider: TutorProvider,
-  stateStore = new InMemoryTutorStateStore()
+  stateStore = new InMemoryTutorStateStore(),
+  options: ServerOptions = {}
 ): Express {
   const app = express();
 
   app.use(express.static(publicDir));
   app.use(express.json({ limit: "1mb" }));
+
+  app.get("/pairing", (_request: Request, response: Response) => {
+    response.json({
+      required: options.pairing?.required ?? false
+    });
+  });
+
+  app.use((request: Request, response: Response, next) => {
+    const pairing = options.pairing;
+
+    if (!pairing?.required) {
+      next();
+      return;
+    }
+
+    const token = request.header("x-pairing-token");
+
+    if (token && token === pairing.token) {
+      next();
+      return;
+    }
+
+    response.status(401).json({
+      type: "error",
+      answer: "Pairing token required for LAN access.",
+      provider: provider.name
+    });
+  });
 
   app.get("/health", (_request: Request, response: Response) => {
     response.json({

@@ -38,6 +38,33 @@ Open the companion UI at:
 http://localhost:3000/
 ```
 
+For iPhone Safari on the same Wi-Fi network, run the server in LAN mode:
+
+```bash
+cd mac-server
+HOST=0.0.0.0 PORT=3000 npm run dev
+```
+
+Find your Mac LAN IP:
+
+```bash
+ipconfig getifaddr en0
+```
+
+Then open:
+
+```text
+http://<mac-lan-ip>:3000/
+```
+
+LAN mode requires a pairing token. Set one explicitly:
+
+```bash
+HOST=0.0.0.0 PORT=3000 PAIRING_TOKEN=choose-a-local-token npm run dev
+```
+
+If `PAIRING_TOKEN` is missing in LAN mode, the server generates an in-memory token and prints it in the terminal. The browser UI asks for the token and keeps it only in page memory.
+
 The mock provider is used by default. You can select the placeholder Codex provider with:
 
 ```bash
@@ -171,6 +198,7 @@ When the marker is exactly `?` and no `selectedIntent` is provided, the mock tut
 - This milestone does not read Goodnotes, capture the screen, process images, run OCR, or shell out to Codex.
 - The Milestone 3 UI stores tutor turns only in browser memory for the current open page.
 - Session state is currently in memory only on the Mac server. Restarting the server clears it.
+- LAN mode requires a pairing token for API routes. Static UI files are served so the browser can ask for the token, but tutor/session endpoints require the token.
 - The Codex provider adapter does not read `~/.codex`, `~/.openclaw`, environment auth files, browser profiles, or system credential stores. Runtime Codex calls are explicit opt-in via `TUTOR_PROVIDER=codex_private_local`.
 - Do not commit secrets, authentication files, screenshots, captured frames, OCR logs, local study data, or private session logs.
 - `.env`, `auth.json`, `.codex`, `.openclaw`, captured frame directories, log directories, screenshots, and local study data paths are ignored by Git.

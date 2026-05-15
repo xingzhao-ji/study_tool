@@ -16,61 +16,94 @@
         <div class="status-strip" aria-live="polite">
           <span id="serviceStatus" class="status-dot">Checking</span>
           <span id="providerStatus">Provider</span>
+          <span id="sessionStatus">Session</span>
         </div>
       </header>
 
-      <section class="workspace" aria-label="Tutor workspace">
-        <form id="askForm" class="input-panel">
-          <div class="field-group">
-            <label for="regionText">Boxed text</label>
-            <textarea id="regionText" name="regionText" rows="5" required>FOLLOW(A) includes FIRST(B)</textarea>
-          </div>
+      <section id="pairingPanel" class="pairing-panel" hidden>
+        <label for="pairingToken">Pairing token</label>
+        <div class="pairing-row">
+          <input id="pairingToken" autocomplete="off" inputmode="text">
+          <button id="pairButton" type="button">Pair</button>
+        </div>
+      </section>
 
-          <div class="form-grid">
-            <div class="field-group">
-              <label for="marker">Marker</label>
-              <input id="marker" name="marker" value="?" required>
-            </div>
-            <div class="field-group">
-              <label for="courseHint">Course</label>
-              <input id="courseHint" name="courseHint" value="CS 132 parsing">
-            </div>
-          </div>
-
-          <div class="marker-row" aria-label="Marker shortcuts">
-            <button type="button" data-marker="?">?</button>
-            <button type="button" data-marker="hint?">hint?</button>
-            <button type="button" data-marker="next?">next?</button>
-            <button type="button" data-marker="why?">why?</button>
-            <button type="button" data-marker="check?">check?</button>
-            <button type="button" data-marker="err?">err?</button>
-            <button type="button" data-marker="ex?">ex?</button>
-          </div>
-
-          <div class="field-group">
-            <label for="nearbyContext">Nearby context</label>
-            <textarea id="nearbyContext" name="nearbyContext" rows="3"></textarea>
-          </div>
-
-          <div class="action-row">
-            <button id="askButton" class="primary-action" type="submit">Ask</button>
-            <button id="clearButton" type="button">Clear</button>
-          </div>
-        </form>
-
-        <section class="response-panel" aria-label="Tutor response">
+      <section class="dashboard" aria-label="Companion dashboard">
+        <section class="control-card">
           <div class="panel-heading">
-            <h2>Response</h2>
+            <h2>Simulate Detection</h2>
+            <span id="detectionState">Ready</span>
+          </div>
+          <form id="askForm">
+            <div class="field-group">
+              <label for="regionText">Boxed text</label>
+              <textarea id="regionText" name="regionText" rows="6" required>FOLLOW(A) includes FIRST(B)</textarea>
+            </div>
+
+            <div class="form-grid">
+              <div class="field-group">
+                <label for="marker">Marker</label>
+                <input id="marker" name="marker" value="?" required>
+              </div>
+              <div class="field-group">
+                <label for="courseHint">Course</label>
+                <input id="courseHint" name="courseHint" value="CS 132 parsing">
+              </div>
+            </div>
+
+            <div class="marker-row" aria-label="Marker shortcuts">
+              <button type="button" data-marker="?">?</button>
+              <button type="button" data-marker="hint?">hint?</button>
+              <button type="button" data-marker="next?">next?</button>
+              <button type="button" data-marker="why?">why?</button>
+              <button type="button" data-marker="check?">check?</button>
+              <button type="button" data-marker="✓?">✓?</button>
+              <button type="button" data-marker="err?">err?</button>
+              <button type="button" data-marker="full?">full?</button>
+              <button type="button" data-marker="ex?">ex?</button>
+              <button type="button" data-marker="simplify?">simplify?</button>
+            </div>
+
+            <div class="field-group">
+              <label for="nearbyContext">Nearby context</label>
+              <textarea id="nearbyContext" name="nearbyContext" rows="3"></textarea>
+            </div>
+
+            <div class="action-row">
+              <button id="askButton" class="primary-action" type="submit">Simulate</button>
+              <button id="clearButton" type="button">Clear</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="control-card">
+          <div class="panel-heading">
+            <h2>Current Detected Question</h2>
+            <span id="currentConfidence">No detection</span>
+          </div>
+          <article id="currentQuestion" class="detected-box"></article>
+          <div id="intentOptions" class="intent-options" aria-live="polite"></div>
+        </section>
+
+        <section class="control-card answer-card">
+          <div class="panel-heading">
+            <h2>Tutor Answer</h2>
             <span id="responseType">Ready</span>
           </div>
-          <div id="intentOptions" class="intent-options" aria-live="polite"></div>
           <article id="answer" class="answer-box" aria-live="polite"></article>
+          <div class="answer-actions">
+            <button type="button" data-quick-marker="hint?">Hint</button>
+            <button type="button" data-quick-marker="next?">Next step</button>
+            <button type="button" data-quick-marker="why?">Why</button>
+            <button type="button" data-quick-marker="check?">Check new work</button>
+            <button type="button" data-quick-marker="full?">Full solution</button>
+          </div>
         </section>
       </section>
 
       <section class="turns-panel" aria-label="Tutor turns">
         <div class="panel-heading">
-          <h2>Turns</h2>
+          <h2>History</h2>
           <span id="turnCount">0</span>
         </div>
         <ol id="turns" class="turn-list"></ol>

@@ -12,15 +12,62 @@ const turns = document.querySelector("#turns");
 const turnCount = document.querySelector("#turnCount");
 const serviceStatus = document.querySelector("#serviceStatus");
 const providerStatus = document.querySelector("#providerStatus");
+const sessionStatus = document.querySelector("#sessionStatus");
+const currentQuestion = document.querySelector("#currentQuestion");
+const currentConfidence = document.querySelector("#currentConfidence");
+const detectionState = document.querySelector("#detectionState");
+const pairingPanel = document.querySelector("#pairingPanel");
+const pairingTokenInput = document.querySelector("#pairingToken");
+const pairButton = document.querySelector("#pairButton");
 
-const tutorTurns = [];
+let pairingToken = "";
+let pairingRequired = false;
+let paired = true;
+let currentDetection = null;
+let pollTimer = null;
+
+async function apiFetch(path, options = {}) {
+  const headers = new Headers(options.headers ?? {});
+
+  if (pairingToken) {
+    headers.set("x-pairing-token", pairingToken);
+  }
+
+  return fetch(path, { ...options, headers });
+}
+
+async function loadPairingState() {
+  const response = await fetch("/pairing");
+  const body = await response.json();
+  pairingRequired = body.required === true;
+  paired = !pairingRequired;
+  pairingPanel.hidden = !pairingRequired;
+
+  if (!pairingRequired) {
+    await refreshAll();
+    startPolling();
+  } else {
+    serviceStatus.textContent = "Pairing required";
+    serviceStatus.dataset.state = "offline";
+    providerStatus.textContent = "Enter token";
+  }
+}
+
+async function refreshAll() {
+  await Promise.all([loadStatus(), loadSession()]);
+}
 
 async function loadStatus() {
   try {
     const [healthResponse, providersResponse] = await Promise.all([
-      fetch("/health"),
-      fetch("/providers")
+      apiFetch("/health"),
+      apiFetch("/providers")
     ]);
+
+    if (!healthResponse.ok || !providersResponse.ok) {
+      throw new Error("status failed");
+    }
+
     const health = await healthResponse.json();
     const providers = await providersResponse.json();
     const active = providers.providers.find((provider) => provider.name === providers.activeProvider);
@@ -31,71 +78,125 @@ async function loadStatus() {
       ? `${providers.activeProvider} · ${active.status}`
       : providers.activeProvider;
   } catch (error) {
-    serviceStatus.textContent = "Offline";
+    serviceStatus.textContent = pairingRequired && !paired ? "Pairing required" : "Offline";
     serviceStatus.dataset.state = "offline";
     providerStatus.textContent = "Provider unavailable";
   }
 }
 
-function currentRequest(selectedIntent = null) {
+async function loadSession() {
+  if (pairingRequired && !paired) {
+    return;
+  }
+
+  try {
+    const response = await apiFetch("/session");
+
+    if (!response.ok) {
+      throw new Error("session failed");
+    }
+
+    const session = await response.json();
+    sessionStatus.textContent = `Session ${shortId(session.id)}`;
+    renderSession(session);
+  } catch (error) {
+    sessionStatus.textContent = "Session unavailable";
+  }
+}
+
+function currentRequest() {
   return {
     regionText: regionText.value.trim(),
     marker: marker.value.trim(),
-    selectedIntent,
     courseHint: courseHint.value.trim(),
-    nearbyContext: nearbyContext.value.trim(),
-    previousTutorState: tutorTurns
+    nearbyContext: nearbyContext.value.trim()
   };
 }
 
-async function submitAsk(selectedIntent = null) {
-  const request = currentRequest(selectedIntent);
+async function submitAsk() {
+  const request = currentRequest();
 
-  if (!request.regionText || !request.marker) {
+  if (!request.regionText || !request.marker || (pairingRequired && !paired)) {
     return;
   }
 
   askButton.disabled = true;
-  responseType.textContent = selectedIntent ? "Answering" : "Asking";
+  detectionState.textContent = "Submitting";
   clearIntentOptions();
 
   try {
-    const response = await fetch("/ask", {
+    const response = await apiFetch("/simulate-detection", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request)
     });
     const body = await response.json();
-    renderTutorResponse(request, body);
+
+    if (!response.ok) {
+      renderError(body.answer ?? "Detection failed.");
+      return;
+    }
+
+    renderDetectionResult(body);
+    await loadSession();
   } catch (error) {
-    responseType.textContent = "Error";
-    answer.textContent = "The local tutor server did not respond.";
+    renderError("The local tutor server did not respond.");
   } finally {
     askButton.disabled = false;
   }
 }
 
-function renderTutorResponse(request, body) {
+async function selectedIntent(option) {
+  if (!currentDetection || (pairingRequired && !paired)) {
+    return;
+  }
+
+  responseType.textContent = "Answering";
+  clearIntentOptions();
+
+  try {
+    const response = await apiFetch("/select-intent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        questionId: currentDetection.id,
+        selectedIntent: option
+      })
+    });
+    const body = await response.json();
+
+    if (!response.ok) {
+      renderError(body.answer ?? "Intent selection failed.");
+      return;
+    }
+
+    renderDetectionResult(body);
+    await loadSession();
+  } catch (error) {
+    renderError("The local tutor server did not respond.");
+  }
+}
+
+function renderDetectionResult(body) {
+  currentDetection = body.detectedQuestion;
+  detectionState.textContent = "Detected";
+  renderCurrentQuestion(currentDetection);
+  renderTutorResponse(body.tutorResponse);
+}
+
+function renderTutorResponse(body) {
   responseType.textContent = body.type;
 
   if (body.type === "intent_options") {
     answer.textContent = "";
-    renderIntentOptions(request, body.options ?? []);
+    renderIntentOptions(body.options ?? []);
     return;
   }
 
-  const text = body.answer ?? "No answer returned.";
-  answer.textContent = text;
-  tutorTurns.push({
-    regionText: request.regionText,
-    marker: request.marker,
-    selectedIntent: request.selectedIntent,
-    answer: text
-  });
-  renderTurns();
+  answer.textContent = body.answer ?? "No answer returned.";
 }
 
-function renderIntentOptions(request, options) {
+function renderIntentOptions(options) {
   intentOptions.replaceChildren();
 
   for (const option of options) {
@@ -103,7 +204,7 @@ function renderIntentOptions(request, options) {
     button.type = "button";
     button.className = "intent-option";
     button.textContent = option;
-    button.addEventListener("click", () => submitAsk(option));
+    button.addEventListener("click", () => selectedIntent(option));
     intentOptions.append(button);
   }
 
@@ -116,11 +217,41 @@ function clearIntentOptions() {
   intentOptions.replaceChildren();
 }
 
-function renderTurns() {
-  turns.replaceChildren();
-  turnCount.textContent = String(tutorTurns.length);
+function renderSession(session) {
+  renderTurns(session.turns ?? []);
 
-  for (const turn of tutorTurns) {
+  if (session.latest) {
+    currentDetection = session.latest.detectedQuestion;
+    renderCurrentQuestion(session.latest.detectedQuestion);
+    renderTutorResponse(session.latest.tutorResponse);
+  } else if (!currentDetection) {
+    currentQuestion.textContent = "";
+    currentConfidence.textContent = "No detection";
+    answer.textContent = "";
+    responseType.textContent = "Ready";
+  }
+}
+
+function renderCurrentQuestion(detection) {
+  currentConfidence.textContent = `Confidence ${Math.round((detection.confidence ?? 1) * 100)}%`;
+  currentQuestion.replaceChildren();
+
+  const text = document.createElement("p");
+  text.className = "detected-text";
+  text.textContent = detection.regionText;
+
+  const meta = document.createElement("p");
+  meta.className = "detected-meta";
+  meta.textContent = `${detection.marker} · ${detection.courseHint || "No course hint"}`;
+
+  currentQuestion.append(meta, text);
+}
+
+function renderTurns(sessionTurns) {
+  turns.replaceChildren();
+  turnCount.textContent = String(sessionTurns.length);
+
+  for (const turn of sessionTurns) {
     const item = document.createElement("li");
     item.className = "turn-item";
 
@@ -137,8 +268,22 @@ function renderTurns() {
     reply.textContent = turn.answer;
 
     item.append(meta, prompt, reply);
-    turns.prepend(item);
+    turns.append(item);
   }
+}
+
+function renderError(message) {
+  responseType.textContent = "Error";
+  answer.textContent = message;
+}
+
+function startPolling() {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(loadSession, 2000);
+}
+
+function shortId(id) {
+  return id ? id.slice(0, 8) : "none";
 }
 
 form.addEventListener("submit", (event) => {
@@ -146,12 +291,21 @@ form.addEventListener("submit", (event) => {
   submitAsk();
 });
 
-clearButton.addEventListener("click", () => {
-  tutorTurns.splice(0, tutorTurns.length);
+clearButton.addEventListener("click", async () => {
+  await apiFetch("/clear-session", { method: "POST" });
+  currentDetection = null;
   clearIntentOptions();
+  detectionState.textContent = "Ready";
   answer.textContent = "";
   responseType.textContent = "Ready";
-  renderTurns();
+  await loadSession();
+});
+
+pairButton.addEventListener("click", async () => {
+  pairingToken = pairingTokenInput.value.trim();
+  paired = Boolean(pairingToken);
+  await refreshAll();
+  startPolling();
 });
 
 for (const button of document.querySelectorAll("[data-marker]")) {
@@ -161,4 +315,15 @@ for (const button of document.querySelectorAll("[data-marker]")) {
   });
 }
 
-loadStatus();
+for (const button of document.querySelectorAll("[data-quick-marker]")) {
+  button.addEventListener("click", () => {
+    marker.value = button.dataset.quickMarker;
+    if (button.dataset.quickMarker === "check?") {
+      regionText.focus();
+      return;
+    }
+    submitAsk();
+  });
+}
+
+loadPairingState();
