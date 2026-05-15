@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express, { type Express, type Request, type Response } from "express";
-import { z } from "zod";
+import { z, type ZodError } from "zod";
 import type { TutorProvider } from "./providers/TutorProvider.js";
 import { TUTOR_PROVIDER_DESCRIPTORS } from "./providers/ProviderFactory.js";
 import { checkCodexStatus, type CodexStatusResult } from "./providers/CodexStatus.js";
@@ -142,7 +142,7 @@ export function createApp(
     if (!parsed.success) {
       response.status(400).json({
         type: "error",
-        answer: "Invalid tutor request body.",
+        answer: validationErrorAnswer("Invalid tutor request body", parsed.error),
         provider: provider.name,
         raw: parsed.error.format()
       });
@@ -168,7 +168,7 @@ export function createApp(
     if (!parsed.success) {
       response.status(400).json({
         type: "error",
-        answer: "Invalid detection request body.",
+        answer: validationErrorAnswer("Invalid detection request body", parsed.error),
         provider: provider.name,
         raw: parsed.error.format()
       });
@@ -193,7 +193,7 @@ export function createApp(
     if (!parsed.success) {
       response.status(400).json({
         type: "error",
-        answer: "Invalid frame request body.",
+        answer: validationErrorAnswer("Invalid frame request body", parsed.error),
         provider: provider.name,
         raw: parsed.error.format()
       });
@@ -240,7 +240,7 @@ export function createApp(
     if (!parsed.success) {
       response.status(400).json({
         type: "error",
-        answer: "Invalid intent selection body.",
+        answer: validationErrorAnswer("Invalid intent selection body", parsed.error),
         provider: provider.name,
         raw: parsed.error.format()
       });
@@ -332,4 +332,24 @@ export function createApp(
   }
 
   return app;
+}
+
+function validationErrorAnswer(prefix: string, error: ZodError): string {
+  const fieldErrors = Object.entries(error.flatten().fieldErrors)
+    .filter(([, errors]) => (errors?.length ?? 0) > 0)
+    .map(([field, errors]) => {
+      const detail = (errors ?? []).join(" ").toLowerCase();
+
+      if (detail.includes("required") || detail.includes("at least 1")) {
+        return `${field} is required`;
+      }
+
+      return `${field} is invalid`;
+    });
+
+  if (fieldErrors.length === 0) {
+    return `${prefix}.`;
+  }
+
+  return `${prefix}: ${fieldErrors.join("; ")}.`;
 }

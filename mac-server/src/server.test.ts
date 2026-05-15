@@ -212,6 +212,39 @@ describe("mac server", () => {
     assert.match(body.answer, /FOLLOW\(A\) can receive FIRST\(B\)/);
   });
 
+  it("returns a clear validation error when regionText is missing", async () => {
+    const response = await fetch(`${baseUrl}/ask`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        marker: "?",
+        courseHint: "CS 132 parsing"
+      })
+    });
+    const body = await response.json();
+
+    assert.equal(response.status, 400);
+    assert.equal(body.type, "error");
+    assert.match(body.answer, /regionText is required/i);
+  });
+
+  it("returns a safe tutor answer for unknown markers", async () => {
+    const response = await fetch(`${baseUrl}/ask`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        regionText: "FOLLOW(A) includes FIRST(B)",
+        marker: "teach?",
+        courseHint: "CS 132 parsing"
+      })
+    });
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(body.type, "tutor_answer");
+    assert.match(body.answer, /marker is not recognized/i);
+  });
+
   it("exports the in-memory session as markdown notes", async () => {
     await fetch(`${baseUrl}/simulate-detection`, {
       method: "POST",
