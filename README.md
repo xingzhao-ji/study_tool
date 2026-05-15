@@ -18,11 +18,48 @@ This repository currently implements Milestones 0, 1, 2, and 3:
 - An opt-in `codex_private_local` provider that queues local `codex exec` calls and returns structured errors.
 - A user-triggered Codex status diagnostic that runs only `which codex` and `codex login status`, with token-shaped output redacted before it reaches the UI.
 
+## What Works Now
+
+- Local Mac server at `http://localhost:3000`.
+- Browser companion UI at `GET /`.
+- Mock provider by default, with no external dependency.
+- Bare `?` returns intent options first and does not answer directly.
+- Selected intent returns a tutor answer.
+- `check?` and `✓?` use the same check behavior.
+- In-memory latest detection, latest answer, and turn history.
+- Manual screenshot/crop upload endpoint that requires manual text until OCR exists.
+- LAN/iPhone Safari mode with pairing-token protection.
+- Opt-in `codex_private_local` provider with fake-runner tests, timeout handling, and max concurrency 1.
+
+## What Does Not Work Yet
+
+- No live Goodnotes integration.
+- No screen capture, ReplayKit stream, PiP companion, native iOS app, OCR, handwriting recognition, or boxed-region detection.
+- No durable session persistence. Restarting the server clears session state.
+- Manual frame upload does not detect text by itself.
+- Real Codex CLI behavior depends on a working local `codex` install and login; tests never call real Codex.
+
 ## Setup
 
 ```bash
 cd mac-server
 npm install
+```
+
+## Test Commands
+
+```bash
+cd mac-server
+npm test
+npm run build
+npm run simulate
+```
+
+Provider-specific tests use a fake command runner and do not call real Codex:
+
+```bash
+cd mac-server
+npm run test:codex-provider
 ```
 
 ## Run Server
@@ -67,6 +104,24 @@ HOST=0.0.0.0 PORT=3000 PAIRING_TOKEN=choose-a-local-token npm run dev
 
 If `PAIRING_TOKEN` is missing in LAN mode, the server generates an in-memory token and prints it in the terminal. The browser UI asks for the token and keeps it only in page memory.
 
+## First Test Checklist
+
+1. `cd ~/Desktop/study_tool`
+2. `git pull`
+3. `cd mac-server`
+4. `npm install`
+5. `npm test`
+6. `npm run build`
+7. `npm run simulate`
+8. `npm run dev`
+9. Open `http://localhost:3000`
+10. Submit a simulated region with marker `?`.
+11. Select an intent option.
+12. Submit follow-up work with marker `check?`.
+13. For iPhone Safari, restart with `HOST=0.0.0.0 PORT=3000 npm run dev`.
+14. Run `ipconfig getifaddr en0`.
+15. Open `http://<MAC_LAN_IP>:3000` on the iPhone and enter the pairing token printed by the server or set in `PAIRING_TOKEN`.
+
 The mock provider is used by default. You can select the opt-in local Codex provider with:
 
 ```bash
@@ -88,13 +143,6 @@ which codex
 codex --help
 codex exec --help
 codex login status
-```
-
-Provider-specific tests use a fake command runner and do not call real Codex:
-
-```bash
-cd mac-server
-npm run test:codex-provider
 ```
 
 ## Run Simulation
@@ -169,7 +217,7 @@ The browser UI is served by the Mac server and uses the same local endpoints:
 - `POST /undo-last`
 - `POST /frame`
 
-It keeps tutor turns only in memory for the current page session. It can copy or download the current in-memory session as Markdown notes on request. It does not use browser storage, save screenshots by default, capture frames, run OCR, or read Goodnotes.
+Tutor turns are stored only in the Mac server's in-memory session. The browser can copy or download the current in-memory session as Markdown notes on request. It does not use browser storage, save screenshots by default, capture frames, run OCR, or read Goodnotes.
 
 Daily study controls:
 
@@ -261,3 +309,36 @@ When the marker is exactly `?` and no `selectedIntent` is provided, the mock tut
 
 - `mock`: implemented and used by default.
 - `codex_private_local`: implemented as an opt-in local Codex CLI provider. It queues requests with max concurrency 1, uses `codex exec --ephemeral`, applies a configurable timeout, strips common formatting artifacts, and returns structured errors on timeout, spawn failure, non-zero exit, or bad output.
+
+## Troubleshooting
+
+- If `npm run dev` says the port is already in use, set another port: `PORT=3001 npm run dev`.
+- If iPhone Safari cannot connect, confirm the Mac and iPhone are on the same Wi-Fi network, the server was started with `HOST=0.0.0.0`, and the URL uses the LAN IP from `ipconfig getifaddr en0`.
+- If LAN requests fail with pairing errors, enter the exact `PAIRING_TOKEN` value or the generated token printed in the server terminal. A bad token is shown in the UI as rejected.
+- If `codex_private_local` returns an error, run `curl http://localhost:3000/codex/status` and keep using the `mock` provider until the local CLI and login status are ready.
+- If `/ask` returns `400`, make sure the JSON body includes non-empty `regionText` and `marker`.
+- If `/frame` returns `manual_text_required`, that is expected until OCR exists. Fill the boxed text and marker manually.
+
+## Known Limitations
+
+- The tutor can be useful for MVP testing, but the mock provider is rule-based and intentionally limited.
+- Session state is single-process memory, not a database.
+- Pairing protects LAN API routes, but this is still a personal-use local/LAN tool, not a hardened multi-user service.
+- Saved frames are opt-in with `SAVE_FRAMES=true` and should not be committed.
+
+## Next Steps
+
+1. Keep hardening the web/iPhone Safari companion loop.
+2. Improve follow-up checking quality for more courses and mistake types.
+3. Exercise the opt-in Codex provider on a real local setup without making it default.
+4. Add OCR and vision interfaces as tested stubs before attempting real handwriting recognition.
+5. Use the manual frame path as the fallback for any ReplayKit or native iOS experiments.
+
+## More Docs
+
+- [Architecture](docs/architecture.md)
+- [Testing](docs/testing.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [iOS plan](docs/ios-plan.md)
+- [ReplayKit plan](docs/replaykit-plan.md)
+- [PiP risk notes](docs/pip-risk.md)
