@@ -10,7 +10,30 @@ describe("mac server", () => {
   let baseUrl: string;
 
   before(async () => {
-    const app = createApp(new MockTutorProvider());
+    const app = createApp(new MockTutorProvider(), undefined, {
+      codexStatusChecker: async () => ({
+        available: true,
+        commandPath: "/usr/local/bin/codex",
+        loginStatus: "ok",
+        detail: "Codex CLI is available and login status returned successfully.",
+        checks: [
+          {
+            name: "which codex",
+            ok: true,
+            exitCode: 0,
+            timedOut: false,
+            output: "/usr/local/bin/codex"
+          },
+          {
+            name: "codex login status",
+            ok: true,
+            exitCode: 0,
+            timedOut: false,
+            output: "Logged in"
+          }
+        ]
+      })
+    });
     server = await new Promise<Server>((resolve) => {
       const listener = app.listen(0, () => resolve(listener));
     });
@@ -53,6 +76,8 @@ describe("mac server", () => {
     assert.match(body, /id="marker"/);
     assert.match(body, /id="connectionProvider"/);
     assert.match(body, /id="connectionSession"/);
+    assert.match(body, /id="connectionCodex"/);
+    assert.match(body, /id="codexStatusButton"/);
     assert.match(body, /id="framePreview"/);
     assert.match(body, /id="uploadFrameOnlyButton"/);
     assert.match(body, /id="copySessionButton"/);
@@ -74,6 +99,7 @@ describe("mac server", () => {
     assert.match(scriptBody, /renderAnswerText/);
     assert.match(scriptBody, /showFullAnswer/);
     assert.match(scriptBody, /Choose the kind of help/);
+    assert.match(scriptBody, /checkCodexStatus/);
     assert.match(scriptBody, /copySessionNotes/);
     assert.match(scriptBody, /downloadSessionNotes/);
     assert.match(styleBody, /\.app-shell/);
@@ -108,6 +134,20 @@ describe("mac server", () => {
         }
       ]
     });
+  });
+
+  it("returns safe Codex status diagnostics when requested", async () => {
+    const response = await fetch(`${baseUrl}/codex/status`);
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(body.available, true);
+    assert.equal(body.loginStatus, "ok");
+    assert.equal(body.commandPath, "/usr/local/bin/codex");
+    assert.deepEqual(
+      body.checks.map((check: { name: string }) => check.name),
+      ["which codex", "codex login status"]
+    );
   });
 
   it("returns intent options for a bare question marker", async () => {

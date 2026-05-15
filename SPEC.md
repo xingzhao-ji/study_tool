@@ -44,6 +44,8 @@ The `codex_private_local` provider builds intent, tutor, and check prompts from 
 
 The provider uses a configurable timeout, defaults to 45 seconds, and queues calls so only one Codex request runs at a time. Tests use a fake command runner and must not require real Codex.
 
+The server also exposes an explicit Codex status diagnostic. It may run only `which codex` and `codex login status`, returns sanitized command/status output, and must not inspect auth files or private configuration directories.
+
 ## Milestone 3 Companion UI
 
 Milestone 3 adds a browser-based local companion UI served by the Mac server at `/`. The UI lets the user:
@@ -56,6 +58,7 @@ Milestone 3 adds a browser-based local companion UI served by the Mac server at 
 - View the latest tutor response and a short in-memory turn list.
 - Copy or download the current in-memory session as Markdown notes.
 - Upload a screenshot/crop manually, with OCR still requiring manually corrected text.
+- Run the explicit Codex readiness check from the Connection card.
 
 The UI is a prototype for the future companion surface. It must not capture the screen, read Goodnotes, run OCR, save study data, or use browser storage. It invokes Codex only when the server was explicitly started with `TUTOR_PROVIDER=codex_private_local`.
 

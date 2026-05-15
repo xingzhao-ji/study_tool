@@ -16,6 +16,7 @@ This repository currently implements Milestones 0, 1, 2, and 3:
 - A connection/status card for iPhone Safari and desktop browser use.
 - A safe manual screenshot/crop upload path that requires manually corrected text until OCR exists.
 - An opt-in `codex_private_local` provider that queues local `codex exec` calls and returns structured errors.
+- A user-triggered Codex status diagnostic that runs only `which codex` and `codex login status`.
 
 ## Setup
 
@@ -143,12 +144,19 @@ Expected provider names:
 }
 ```
 
+Check local Codex CLI readiness without reading auth files:
+
+```bash
+curl http://localhost:3000/codex/status
+```
+
 ## Companion UI
 
 The browser UI is served by the Mac server and uses the same local endpoints:
 
 - `GET /health`
 - `GET /providers`
+- `GET /codex/status`
 - `POST /ask`
 - `POST /simulate-detection`
 - `POST /select-intent`
@@ -159,6 +167,8 @@ The browser UI is served by the Mac server and uses the same local endpoints:
 - `POST /frame`
 
 It keeps tutor turns only in memory for the current page session. It can copy or download the current in-memory session as Markdown notes on request. It does not use browser storage, save screenshots by default, capture frames, run OCR, or read Goodnotes.
+
+The Connection card includes a `Check Codex` button. It performs only the allowed setup checks `which codex` and `codex login status`, then reports whether the local CLI appears ready. It does not inspect auth files.
 
 ## Session API
 

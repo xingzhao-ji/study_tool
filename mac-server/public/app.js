@@ -32,7 +32,9 @@ const connectionService = document.querySelector("#connectionService");
 const connectionProvider = document.querySelector("#connectionProvider");
 const connectionSession = document.querySelector("#connectionSession");
 const connectionPairing = document.querySelector("#connectionPairing");
+const connectionCodex = document.querySelector("#connectionCodex");
 const connectionUpdated = document.querySelector("#connectionUpdated");
+const codexStatusButton = document.querySelector("#codexStatusButton");
 
 let pairingToken = "";
 let pairingRequired = false;
@@ -112,6 +114,35 @@ async function loadStatus() {
     providerStatus.textContent = "Provider unavailable";
     connectionService.textContent = pairingRequired && !paired ? "Waiting for token" : "Offline";
     connectionProvider.textContent = "Unavailable";
+  }
+}
+
+async function checkCodexStatus() {
+  if (pairingRequired && !paired) {
+    return;
+  }
+
+  codexStatusButton.disabled = true;
+  connectionCodex.textContent = "Checking";
+
+  try {
+    const response = await apiFetch("/codex/status");
+    const body = await response.json();
+
+    if (!response.ok) {
+      throw new Error(body.detail ?? "codex status failed");
+    }
+
+    if (!body.available) {
+      connectionCodex.textContent = "CLI not found";
+      return;
+    }
+
+    connectionCodex.textContent = body.loginStatus === "ok" ? "Ready" : "Needs login";
+  } catch (error) {
+    connectionCodex.textContent = "Status failed";
+  } finally {
+    codexStatusButton.disabled = false;
   }
 }
 
@@ -511,6 +542,7 @@ pairButton.addEventListener("click", async () => {
   startPolling();
 });
 
+codexStatusButton.addEventListener("click", checkCodexStatus);
 copySessionButton.addEventListener("click", copySessionNotes);
 downloadSessionButton.addEventListener("click", downloadSessionNotes);
 uploadFrameButton.addEventListener("click", () => uploadFrame(true));

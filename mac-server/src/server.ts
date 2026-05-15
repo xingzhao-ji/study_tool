@@ -4,6 +4,7 @@ import express, { type Express, type Request, type Response } from "express";
 import { z } from "zod";
 import type { TutorProvider } from "./providers/TutorProvider.js";
 import { TUTOR_PROVIDER_DESCRIPTORS } from "./providers/ProviderFactory.js";
+import { checkCodexStatus, type CodexStatusResult } from "./providers/CodexStatus.js";
 import {
   InMemoryTutorStateStore,
   requestFromDetection,
@@ -63,6 +64,7 @@ const selectIntentSchema = z.object({
 export interface ServerOptions {
   pairing?: PairingConfig;
   frameStore?: FrameStore;
+  codexStatusChecker?: () => Promise<CodexStatusResult>;
 }
 
 export function createApp(
@@ -117,6 +119,21 @@ export function createApp(
       activeProvider: provider.name,
       providers: TUTOR_PROVIDER_DESCRIPTORS
     });
+  });
+
+  app.get("/codex/status", async (_request: Request, response: Response) => {
+    try {
+      const statusChecker = options.codexStatusChecker ?? checkCodexStatus;
+      response.json(await statusChecker());
+    } catch (error) {
+      response.status(500).json({
+        available: false,
+        loginStatus: "unknown",
+        detail: "Codex status check failed.",
+        checks: [],
+        raw: error instanceof Error ? error.message : error
+      });
+    }
   });
 
   app.post("/ask", async (request: Request, response: Response) => {
