@@ -45,7 +45,28 @@ cd mac-server
 TUTOR_PROVIDER=codex_private_local npm run dev
 ```
 
-This does not run Codex, read Codex auth, inspect local config, or access private files.
+The Codex provider shells out only to `codex exec` through a safe adapter when `/ask` is called. It does not read auth files, inspect `~/.codex`, inspect `~/.openclaw`, or read local private config directly. The default timeout is 45 seconds:
+
+```bash
+cd mac-server
+TUTOR_PROVIDER=codex_private_local CODEX_TIMEOUT_MS=45000 npm run dev
+```
+
+Allowed status checks before using the real provider:
+
+```bash
+which codex
+codex --help
+codex exec --help
+codex login status
+```
+
+Provider-specific tests use a fake command runner and do not call real Codex:
+
+```bash
+cd mac-server
+npm run test:codex-provider
+```
 
 ## Run Simulation
 
@@ -118,7 +139,7 @@ When the marker is exactly `?` and no `selectedIntent` is provided, the mock tut
 
 - This milestone does not read Goodnotes, capture the screen, process images, run OCR, or shell out to Codex.
 - The Milestone 3 UI stores tutor turns only in browser memory for the current open page.
-- The Milestone 2 provider boundary does not read `~/.codex`, `~/.openclaw`, environment auth files, browser profiles, or system credential stores.
+- The Codex provider adapter does not read `~/.codex`, `~/.openclaw`, environment auth files, browser profiles, or system credential stores. Runtime Codex calls are explicit opt-in via `TUTOR_PROVIDER=codex_private_local`.
 - Do not commit secrets, authentication files, screenshots, captured frames, OCR logs, local study data, or private session logs.
 - `.env`, `auth.json`, `.codex`, `.openclaw`, captured frame directories, log directories, screenshots, and local study data paths are ignored by Git.
 - Future providers must not inspect `~/.codex`, `~/.openclaw`, browser profiles, system credential stores, or private notes unless explicitly approved.
@@ -126,4 +147,4 @@ When the marker is exactly `?` and no `selectedIntent` is provided, the mock tut
 ## Provider Status
 
 - `mock`: implemented and used by default.
-- `codex_private_local`: Milestone 2 placeholder only. It returns a clear not-implemented response with generated prompt strings and does not access Codex auth, shell out, or inspect local private configuration.
+- `codex_private_local`: opt-in local Codex CLI provider. It queues requests with max concurrency 1, uses `codex exec --ephemeral`, applies a configurable timeout, and returns structured errors on timeout or bad output.

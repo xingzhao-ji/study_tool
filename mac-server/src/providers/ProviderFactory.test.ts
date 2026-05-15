@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createTutorProvider, resolveProviderName } from "./ProviderFactory.js";
+import { createTutorProvider, resolveCodexTimeoutMs, resolveProviderName } from "./ProviderFactory.js";
 
 describe("ProviderFactory", () => {
   it("defaults to the mock provider", () => {
@@ -20,5 +20,12 @@ describe("ProviderFactory", () => {
       () => resolveProviderName("remote_llm"),
       /Unsupported tutor provider "remote_llm"/
     );
+  });
+
+  it("resolves Codex provider timeout configuration", () => {
+    assert.equal(resolveCodexTimeoutMs(undefined), 45_000);
+    assert.equal(resolveCodexTimeoutMs("120000"), 120_000);
+    assert.equal(resolveCodexTimeoutMs(5_000), 5_000);
+    assert.throws(() => resolveCodexTimeoutMs("10"), /Invalid CODEX_TIMEOUT_MS/);
   });
 });

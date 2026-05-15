@@ -32,16 +32,16 @@ The mock provider returns intent options for ambiguous `?` requests and concise 
 
 ## Milestone 2 Provider Boundary
 
-Milestone 2 adds provider selection without enabling private local execution. The server can be configured with `TUTOR_PROVIDER=mock` or `TUTOR_PROVIDER=codex_private_local`.
+Milestone 2 adds provider selection and an explicit opt-in local Codex CLI provider. The server can be configured with `TUTOR_PROVIDER=mock` or `TUTOR_PROVIDER=codex_private_local`.
 
-The `codex_private_local` provider is a design placeholder only. It may build intent, tutor, and check prompts from the request, but it must not:
+The `codex_private_local` provider builds intent, tutor, and check prompts from the request and shells out only to `codex exec` through a safe adapter. It must not:
 
-- Shell out to Codex or OpenClaw.
+- Shell out to anything except Codex CLI through the adapter.
 - Read `~/.codex`, `~/.openclaw`, `.env`, `auth.json`, browser profiles, system credential stores, or private notes.
 - Inspect files outside the repository.
 - Persist study data, screenshots, frames, OCR logs, or session logs.
 
-The placeholder should return a clear not-implemented response until a later milestone explicitly defines and approves private local execution.
+The provider uses a configurable timeout, defaults to 45 seconds, and queues calls so only one Codex request runs at a time. Tests use a fake command runner and must not require real Codex.
 
 ## Milestone 3 Companion UI
 

@@ -84,8 +84,8 @@ describe("mac server", () => {
         },
         {
           name: "codex_private_local",
-          status: "not_implemented",
-          description: "Design placeholder only. No Codex auth, shellout, or private file access."
+          status: "available",
+          description: "Opt-in local Codex CLI provider. No auth-file inspection or private config reads."
         }
       ]
     });
