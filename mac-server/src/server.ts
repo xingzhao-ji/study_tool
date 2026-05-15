@@ -44,17 +44,22 @@ const detectionSchema = z.object({
   confidence: z.number().min(0).max(1).optional()
 });
 
-const frameSchema = z.object({
-  dataUrl: z.string().optional(),
-  imageBase64: z.string().optional(),
-  filename: z.string().optional(),
-  mimeType: z.string().optional(),
-  regionText: z.string().trim().optional(),
-  marker: z.string().trim().optional(),
-  courseHint: z.string().trim().optional(),
-  nearbyContext: z.string().trim().optional(),
-  confidence: z.number().min(0).max(1).optional()
-});
+const frameSchema = z
+  .object({
+    dataUrl: z.string().trim().optional(),
+    imageBase64: z.string().trim().optional(),
+    filename: z.string().optional(),
+    mimeType: z.string().optional(),
+    regionText: z.string().trim().optional(),
+    marker: z.string().trim().optional(),
+    courseHint: z.string().trim().optional(),
+    nearbyContext: z.string().trim().optional(),
+    confidence: z.number().min(0).max(1).optional()
+  })
+  .refine((input) => Boolean(input.dataUrl || input.imageBase64), {
+    path: ["frame data"],
+    message: "frame data is required"
+  });
 
 const selectIntentSchema = z.object({
   questionId: z.string().optional(),

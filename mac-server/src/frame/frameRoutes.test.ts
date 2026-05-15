@@ -44,6 +44,14 @@ describe("frame routes", () => {
     assert.equal(response.body.frame.saved, false);
   });
 
+  it("rejects a frame upload without frame data", async () => {
+    const response = await post("/frame", {});
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.type, "error");
+    assert.match(response.body.answer, /frame data is required/i);
+  });
+
   it("creates a detected question when manual region text and marker are supplied", async () => {
     const response = await post("/frame", {
       dataUrl: "data:text/plain;base64,aGVsbG8=",
