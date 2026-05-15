@@ -42,6 +42,7 @@ const codexStatusButton = document.querySelector("#codexStatusButton");
 let pairingToken = "";
 let pairingRequired = false;
 let paired = true;
+let pairingRejected = false;
 let currentDetection = null;
 let pollTimer = null;
 let currentAnswerText = "";
@@ -56,7 +57,32 @@ async function apiFetch(path, options = {}) {
     headers.set("x-pairing-token", pairingToken);
   }
 
-  return fetch(path, { ...options, headers });
+  const response = await fetch(path, { ...options, headers });
+
+  if (response.status === 401 && pairingRequired) {
+    markPairingRejected();
+  }
+
+  return response;
+}
+
+function markPairingRejected() {
+  pairingRejected = true;
+  paired = false;
+  pairingToken = "";
+  clearInterval(pollTimer);
+  pairingPanel.hidden = false;
+  pairingTokenInput.value = "";
+  serviceStatus.textContent = "Pairing failed";
+  serviceStatus.dataset.state = "offline";
+  providerStatus.textContent = "Bad token";
+  sessionStatus.textContent = "Session locked";
+  connectionService.textContent = "Locked";
+  connectionProvider.textContent = "Locked";
+  connectionSession.textContent = "Locked";
+  connectionPairing.textContent = "Token rejected";
+  connectionUpdated.textContent = "Bad token";
+  renderError("Pairing token rejected. Re-enter the token printed by the server.");
 }
 
 async function loadPairingState() {
@@ -64,6 +90,7 @@ async function loadPairingState() {
   const body = await response.json();
   pairingRequired = body.required === true;
   paired = !pairingRequired;
+  pairingRejected = false;
   pairingPanel.hidden = !pairingRequired;
   connectionPairing.textContent = pairingRequired ? "Token required" : "Local only";
 
@@ -74,8 +101,10 @@ async function loadPairingState() {
     serviceStatus.textContent = "Pairing required";
     serviceStatus.dataset.state = "offline";
     providerStatus.textContent = "Enter token";
+    sessionStatus.textContent = "Session locked";
     connectionService.textContent = "Waiting for token";
     connectionProvider.textContent = "Locked";
+    connectionSession.textContent = "Locked";
     connectionUpdated.textContent = "Not paired";
   }
 }
@@ -99,6 +128,12 @@ async function loadStatus() {
     const providers = await providersResponse.json();
     const active = providers.providers.find((provider) => provider.name === providers.activeProvider);
 
+    if (pairingRequired) {
+      pairingRejected = false;
+      paired = true;
+      connectionPairing.textContent = "Paired";
+    }
+
     serviceStatus.textContent = health.ok ? "Online" : "Unavailable";
     serviceStatus.dataset.state = health.ok ? "online" : "offline";
     providerStatus.textContent = active
@@ -114,6 +149,17 @@ async function loadStatus() {
       second: "2-digit"
     });
   } catch (error) {
+    if (pairingRequired && !paired) {
+      if (!pairingRejected) {
+        serviceStatus.textContent = "Pairing required";
+        serviceStatus.dataset.state = "offline";
+        providerStatus.textContent = "Enter token";
+        connectionService.textContent = "Waiting for token";
+        connectionProvider.textContent = "Locked";
+      }
+      return;
+    }
+
     serviceStatus.textContent = pairingRequired && !paired ? "Pairing required" : "Offline";
     serviceStatus.dataset.state = "offline";
     providerStatus.textContent = "Provider unavailable";
@@ -168,6 +214,14 @@ async function loadSession() {
     connectionSession.textContent = `${shortId(session.id)} · ${session.turns.length} turns`;
     renderSession(session);
   } catch (error) {
+    if (pairingRequired && !paired) {
+      if (!pairingRejected) {
+        sessionStatus.textContent = "Session locked";
+        connectionSession.textContent = "Locked";
+      }
+      return;
+    }
+
     sessionStatus.textContent = "Session unavailable";
     connectionSession.textContent = "Unavailable";
   }
@@ -686,10 +740,20 @@ showFullAnswer.addEventListener("click", () => {
 
 pairButton.addEventListener("click", async () => {
   pairingToken = pairingTokenInput.value.trim();
+  pairingRejected = false;
   paired = Boolean(pairingToken);
-  connectionPairing.textContent = paired ? "Paired" : "Token required";
+  connectionPairing.textContent = paired ? "Checking token" : "Token required";
+
+  if (!paired) {
+    clearInterval(pollTimer);
+    return;
+  }
+
   await refreshAll();
-  startPolling();
+
+  if (paired) {
+    startPolling();
+  }
 });
 
 codexStatusButton.addEventListener("click", checkCodexStatus);

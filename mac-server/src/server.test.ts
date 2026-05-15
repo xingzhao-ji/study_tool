@@ -113,6 +113,9 @@ describe("mac server", () => {
     assert.match(scriptBody, /scrollToResults/);
     assert.match(scriptBody, /formatTurnTime/);
     assert.match(scriptBody, /Clear this tutor session history/);
+    assert.match(scriptBody, /markPairingRejected/);
+    assert.match(scriptBody, /Pairing token rejected/);
+    assert.match(scriptBody, /response\.status === 401/);
     assert.match(scriptBody, /prepareFollowUpCheck/);
     assert.match(scriptBody, /Enter the new boxed work to check/);
     assert.match(scriptBody, /draftingFollowUpCheck/);
