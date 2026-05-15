@@ -45,8 +45,6 @@ export class CodexPrivateLocalProvider implements TutorProvider {
         "--skip-git-repo-check",
         "--sandbox",
         "read-only",
-        "--ask-for-approval",
-        "never",
         "-C",
         this.cwd,
         "-"
@@ -98,8 +96,7 @@ export class CodexPrivateLocalProvider implements TutorProvider {
         options,
         provider: this.name,
         raw: {
-          mode,
-          stderr: cleanCodexText(result.stderr)
+          mode
         }
       };
     }
@@ -110,8 +107,7 @@ export class CodexPrivateLocalProvider implements TutorProvider {
       confidence: 0.72,
       provider: this.name,
       raw: {
-        mode,
-        stderr: cleanCodexText(result.stderr)
+        mode
       }
     };
   }
