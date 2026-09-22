@@ -1,6 +1,6 @@
 # Usage reference
 
-Goodnotes Companion Tutor is a private personal-use AI study companion for tutoring around handwritten Goodnotes work. The current build is Mac-only and provides a browser companion UI, mock tutor loop, local course-material upload/retrieval API, manual frame upload path, in-memory session history, and an opt-in local Codex CLI provider without screen capture, OCR, image processing, iOS, ReplayKit, or PiP.
+Study Companion is a local study app that keeps tutoring questions, course material and session notes together. This prototype provides a Node.js/Express server, browser UI, mock tutor loop, course-material upload/retrieval API, manual frame upload path, in-memory session history, and an opt-in local Codex CLI provider. It has no screen capture, OCR, image processing, native iOS app, ReplayKit, or PiP integration.
 
 ## Current Milestone
 
