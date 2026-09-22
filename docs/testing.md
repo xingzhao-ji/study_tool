@@ -16,6 +16,10 @@ Run this gate before committing source, UI, provider, session, or docs changes.
 
 `npm run smoke` starts the Express app on an ephemeral localhost port and exercises the MVP HTTP flow, including the API-first course/RAG path, without requiring a long-running dev server.
 
+`npm test` uses Node's `--import tsx` loader directly. This avoids the `tsx` CLI's IPC socket, which can exceed the Unix socket path limit when a checkout is nested deeply. The same test globs and temporary-data setup still apply. See [reviewer validation](REVIEW_VALIDATION.md) for the checked snapshot and results.
+
+The [validation workflow](../.github/workflows/validate.yml) runs this gate on pull requests and default-branch pushes using Node.js 22 and 24 on macOS and Ubuntu. It checks out into a nested directory so the test-launch regression remains exercised. The workflow uses read-only repository permissions and synthetic fixtures; it requires no model credentials.
+
 ## Provider Tests
 
 ```bash
