@@ -30,6 +30,7 @@ export class ShellCommandRunner implements CommandRunner {
       let stderr = "";
       let settled = false;
       let timedOut = false;
+      let killTimer: NodeJS.Timeout | undefined;
 
       const finish = (result: CommandResult) => {
         if (settled) {
@@ -37,12 +38,14 @@ export class ShellCommandRunner implements CommandRunner {
         }
         settled = true;
         clearTimeout(timer);
+        clearTimeout(killTimer);
         resolve(result);
       };
 
       const timer = setTimeout(() => {
         timedOut = true;
         child.kill("SIGTERM");
+        killTimer = setTimeout(() => child.kill("SIGKILL"), 250);
       }, options.timeoutMs);
 
       child.stdout.setEncoding("utf8");
@@ -59,6 +62,7 @@ export class ShellCommandRunner implements CommandRunner {
         }
         settled = true;
         clearTimeout(timer);
+        clearTimeout(killTimer);
         reject(error);
       });
       child.on("close", (exitCode) => {
